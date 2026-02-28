@@ -1,0 +1,37 @@
+{
+  "target_url": "https://linkedin.com",
+  "domain": "linkedin.com",
+  "scraped_at": "2026-02-28T19:01:05.831129+00:00",
+  "total_documents": 4,
+  "documents": [
+    {
+      "category": "cookie_policy",
+      "url": "https://www.linkedin.com/legal/cookie-policy",
+      "filename": "linkedin.com_cookie_policy.md",
+      "word_count": 2621,
+      "scraped_at": "2026-02-28T19:01:00.248341+00:00"
+    },
+    {
+      "category": "terms_and_conditions",
+      "url": "https://www.linkedin.com/legal/user-agreement?trk=linkedin-tc_auth-button_user-agreement",
+      "filename": "linkedin.com_terms_and_conditions.md",
+      "word_count": 10110,
+      "scraped_at": "2026-02-28T19:01:01.935704+00:00"
+    },
+    {
+      "category": "privacy_policy",
+      "url": "https://www.linkedin.com/legal/privacy-policy?trk=linkedin-tc_auth-button_privacy-policy",
+      "filename": "linkedin.com_privacy_policy.md",
+      "word_count": 13064,
+      "scraped_at": "2026-02-28T19:01:03.815418+00:00"
+    },
+    {
+      "category": "other_policy",
+      "url": "https://www.linkedin.com/jobs/legal-jobs-dublin-1?trk=homepage-basic_suggested-search",
+      "filename": "linkedin.com_other_policy.md",
+      "word_count": 1779,
+      "scraped_at": "2026-02-28T19:01:05.794794+00:00"
+    }
+  ],
+  "output_directory": "/Users/aaronjjean/Documents/GitHub/comp_square/policy_documents"
+}
