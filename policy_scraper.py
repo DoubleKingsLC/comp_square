@@ -54,9 +54,41 @@ POLICY_CATEGORIES = {
 ALL_POLICY_KEYWORDS = [kw for kws in POLICY_CATEGORIES.values() for kw in kws]
 
 
+# URLs containing these fragments are very likely direct policy docs (high confidence)
+DIRECT_URL_SIGNALS = {
+    "privacy_policy":        ["/privacy-policy", "/privacy_policy", "/privacy/policy", "privacypolicy"],
+    "cookie_policy":         ["/cookie-policy", "/cookie_policy", "/cookies"],
+    "terms_and_conditions":  ["/terms-of-service", "/terms-and-conditions", "/terms_of_service",
+                              "/tos", "/user-agreement", "/terms/"],
+    "data_retention_policy": ["/data-retention", "/retention-policy"],
+}
+
+# URLs with these fragments are navigation/hub pages — deprioritise them
+WEAK_URL_SIGNALS = ["search", "center", "hub", "topics", "manage", "settings", "about"]
+
+
+def score_url(url: str) -> int:
+    """Return a quality score for a policy URL — higher = more likely a full doc."""
+    u = url.lower()
+    score = 0
+    for signals in DIRECT_URL_SIGNALS.values():
+        if any(s in u for s in signals):
+            score += 10
+    if any(w in u for w in WEAK_URL_SIGNALS):
+        score -= 5
+    # Shorter paths = less navigation nesting = more likely a direct doc
+    score -= url.count("/")
+    return score
+
+
 def classify_policy(url: str, text: str) -> str:
     """Classify a policy link into one of the known categories."""
     combined = (url + " " + text).lower()
+    # Check direct URL signals first (high confidence)
+    for category, signals in DIRECT_URL_SIGNALS.items():
+        if any(s in combined for s in signals):
+            return category
+    # Fall back to keyword matching
     for category, keywords in POLICY_CATEGORIES.items():
         if any(kw in combined for kw in keywords):
             return category
@@ -196,27 +228,82 @@ async def scrape_policy(page, url: str, category: str, domain: str,
                          output_path: Path) -> dict | None:
     """
     Navigate to a policy URL, extract clean text, save as Markdown.
+    Handles JS-rendered / SPA pages by scrolling and waiting for content.
     Returns a metadata dict or None on failure.
     """
     print(f"\n  [→] Fetching [{category}]: {url}")
     try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=25000)
+        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+
+        # Scroll page to trigger lazy-loaded content (common on SPA policy pages)
+        await page.evaluate("""
+            async () => {
+                await new Promise(resolve => {
+                    let total = 0;
+                    const step = 600;
+                    const timer = setInterval(() => {
+                        window.scrollBy(0, step);
+                        total += step;
+                        if (total >= document.body.scrollHeight) {
+                            clearInterval(timer);
+                            resolve();
+                        }
+                    }, 120);
+                    setTimeout(() => { clearInterval(timer); resolve(); }, 8000);
+                });
+            }
+        """)
+        await asyncio.sleep(2)
+        # Scroll back to top
+        await page.evaluate("window.scrollTo(0, 0)")
         await asyncio.sleep(1)
 
+        # Try extracting via innerText first (best for JS-rendered SPAs)
+        raw_text = await page.evaluate("""
+            () => {
+                // Remove noise elements
+                ['script','style','nav','header','footer','aside'].forEach(tag => {
+                    document.querySelectorAll(tag).forEach(el => el.remove());
+                });
+                const main = document.querySelector('main')
+                    || document.querySelector('article')
+                    || document.querySelector('[role="main"]')
+                    || document.querySelector('.policy-content')
+                    || document.querySelector('.privacy-content')
+                    || document.querySelector('.legal-content')
+                    || document.body;
+                return main ? main.innerText : document.body.innerText;
+            }
+        """)
+
+        # Also get HTML for structured markdown conversion
         raw_html = await page.content()
         soup     = BeautifulSoup(raw_html, "html.parser")
+        title    = soup.title.get_text(strip=True) if soup.title else category.replace("_", " ").title()
 
-        # Page title
-        title = soup.title.get_text(strip=True) if soup.title else category.replace("_", " ").title()
-
-        # Convert to Markdown
+        # Convert HTML to structured markdown
         markdown_content = html_to_markdown(soup, base_url=url)
 
+        # If markdown is too short (JS-heavy SPA), fall back to plain innerText
+        if len(markdown_content.strip()) < 300 and raw_text and len(raw_text.strip()) > 300:
+            print(f"  [~] HTML parse thin — using innerText fallback")
+            # Convert plain text to basic markdown
+            lines = []
+            for line in raw_text.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                # Heuristic: short ALL-CAPS or title-case lines = headings
+                if len(line) < 80 and (line.isupper() or (line.istitle() and len(line.split()) < 10)):
+                    lines.append(f"\n## {line}\n")
+                else:
+                    lines.append(line)
+            markdown_content = "\n".join(lines)
+
         if len(markdown_content.strip()) < 100:
-            print(f"  [!] Content too short — skipping {url}")
+            print(f"  [!] Content still too short after all attempts — skipping {url}")
             return None
 
-        # Build Markdown document with metadata header
         ts        = datetime.now(timezone.utc).isoformat()
         safe_name = re.sub(r"[^\w\-]", "_", category)
         filename  = f"{domain}_{safe_name}.md"
@@ -338,27 +425,56 @@ async def collect_policies(
             await browser.close()
             return {}
 
-        # ── Step 3: Classify and deduplicate by category ──────────────────────
+        # ── Step 3: Classify and pick BEST URL per category via scoring ─────────
         print(f"\n[*] Classifying {len(telemetry_links)} links ...")
-        categorised = {}
+
+        # Well-known direct policy URL patterns as fallback candidates
+        WELLKNOWN_PATHS = {
+            "privacy_policy":        ["/privacy/policy", "/privacy-policy", "/legal/privacy-policy",
+                                      "/en/privacy", "/policies/privacy"],
+            "cookie_policy":         ["/cookies", "/legal/cookie-policy", "/cookie-policy",
+                                      "/policies/cookies"],
+            "terms_and_conditions":  ["/legal/terms", "/terms", "/tos",
+                                      "/legal/user-agreement", "/policies/terms"],
+            "data_retention_policy": ["/data-retention", "/legal/data-retention"],
+        }
+
+        base_origin = f"{parsed.scheme}://{parsed.netloc}"
+
+        # Collect all scored candidates per category
+        candidates = {}
         for link in telemetry_links:
-            href     = link.get("href", "")
-            text     = link.get("text", "")
-            # Resolve relative URLs
+            href = link.get("href", "")
+            text = link.get("text", "")
             if href.startswith("/"):
-                href = f"{parsed.scheme}://{parsed.netloc}{href}"
+                href = f"{base_origin}{href}"
             if not href.startswith("http"):
                 continue
-            # Skip non-same-domain links (external legal pages are out of scope)
             link_domain = urlparse(href).netloc
             if domain not in link_domain and link_domain not in domain:
                 continue
+            category  = classify_policy(href, text)
+            url_score = score_url(href)
+            if category not in candidates:
+                candidates[category] = []
+            candidates[category].append({"href": href, "text": text, "score": url_score})
 
-            category = classify_policy(href, text)
-            # Keep one URL per category (first/best match)
-            if category not in categorised:
-                categorised[category] = {"href": href, "text": text}
-                print(f"  [+] {category:<30} → {href}")
+        # Add well-known fallback URLs as low-priority candidates
+        for category, paths in WELLKNOWN_PATHS.items():
+            for path in paths:
+                fallback_url = f"{base_origin}{path}"
+                if category not in candidates:
+                    candidates[category] = []
+                candidates[category].append({
+                    "href": fallback_url, "text": "", "score": score_url(fallback_url) - 1
+                })
+
+        # Pick highest-scored URL per category
+        categorised = {}
+        for category, options in candidates.items():
+            best = sorted(options, key=lambda x: x["score"], reverse=True)[0]
+            categorised[category] = best
+            print(f"  [+] {category:<30} -> {best['href']}  (score: {best['score']})")
 
         print(f"\n[*] Scraping {len(categorised)} unique policy document(s) ...\n")
 
