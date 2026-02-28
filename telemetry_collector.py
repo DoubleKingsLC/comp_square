@@ -63,12 +63,18 @@ async def collect_telemetry(url: str, output_dir: str = "telemetry_output"):
 
         # ── 2. NETWORK REQUESTS ──────────────────────────────────────────
         def handle_request(request):
+            # Some POST requests contain binary/compressed data — handle gracefully
+            try:
+                post_data = request.post_data
+            except Exception:
+                post_data = "<binary data>"
+
             telemetry["network_requests"].append({
                 "url": request.url,
                 "method": request.method,
                 "resource_type": request.resource_type,
                 "headers": dict(request.headers),
-                "post_data": request.post_data
+                "post_data": post_data
             })
 
         def handle_response(response):
