@@ -195,8 +195,10 @@ def score_url(url: str) -> int:
         if any(s in u for s in signals):
             score += 10
 
-    # Weak / navigation-like signals
-    if any(w in u for w in WEAK_URL_SIGNALS):
+    # Weak / navigation-like signals — only check the URL path, not the hostname,
+    # to avoid penalising dedicated policy subdomains like "privacycenter.instagram.com"
+    _path_for_weak = urlparse(u).path.lower()
+    if any(w in _path_for_weak for w in WEAK_URL_SIGNALS):
         score -= 5
 
     # Language-aware signals: /en/ or /en-us/ etc near policy keywords
@@ -219,9 +221,23 @@ def score_url(url: str) -> int:
     return score
 
 
+# URL fragments that indicate a settings/management page, not a policy document.
+# These should be treated as navigable pages to FIND policies, not as policies themselves.
+MANAGEMENT_URL_TOKENS = [
+    "settings", "manage", "preferences", "opt-out", "opt_out",
+    "cookie_settings", "cookie-settings", "consent_settings",
+]
+
+
 def classify_policy(url: str, text: str) -> str:
     """Classify a policy link into one of the known categories."""
-    combined = (url + " " + text).lower()
+    url_lower = url.lower()
+    combined = (url_lower + " " + text.lower())
+    # Settings/management pages are NOT policy documents — mark as other_policy so
+    # they don't steal the privacy_policy or cookie_policy slot (e.g. Instagram's
+    # /privacy/cookie_settings/ URL would otherwise match "privacy").
+    if any(tok in url_lower for tok in MANAGEMENT_URL_TOKENS):
+        return "other_policy"
     # Check direct URL signals first (high confidence)
     for category, signals in DIRECT_URL_SIGNALS.items():
         if any(s in combined for s in signals):
@@ -355,10 +371,105 @@ def extract_effective_date(text: str | None) -> str | None:
     return None
 
 
+async def extract_links_from_consent_popup(page, base_url: str, primary_domain: str) -> list:
+    """
+    Extract policy links from visible cookie/consent banners and dialogs BEFORE
+    dismissing them. Instagram and similar sites put cookie policy links only inside
+    these popups, so we must harvest them first.
+    Returns list of dicts with source='consent_popup'.
+    """
+    try:
+        links = await page.evaluate("""
+            () => {
+                const results = [];
+                const seen = new Set();
+                const addLink = (a, ctx) => {
+                    const href = (a.href || '').trim();
+                    const text = (a.innerText || a.textContent || '').trim();
+                    if (!href || seen.has(href)) return;
+                    seen.add(href);
+                    results.push({ href, text, context: ctx });
+                };
+                // Ordered from most-specific to broadest — covers Instagram,
+                // OneTrust, Cookiebot, and generic GDPR overlays
+                const POPUP_SELS = [
+                    '[data-testid*="cookie"]',
+                    '[data-testid*="consent"]',
+                    '[id*="onetrust"]',
+                    '[id*="cookiebot"]',
+                    '[id*="cookie-banner"]',
+                    '[id*="cookie_banner"]',
+                    '[id*="cookie-notice"]',
+                    '[id*="cookie_notice"]',
+                    '[id*="cookie-consent"]',
+                    '[id*="cookie_consent"]',
+                    '[id*="gdpr"]',
+                    '[id*="consent"]',
+                    '[class*="CookieBanner"]',
+                    '[class*="cookieBanner"]',
+                    '[class*="cookie-banner"]',
+                    '[class*="cookie-notice"]',
+                    '[class*="cookie-consent"]',
+                    '[class*="consent-banner"]',
+                    '[class*="consent-dialog"]',
+                    '[class*="gdpr"]',
+                    '[role="dialog"]',
+                    '[role="alertdialog"]',
+                ];
+                for (const sel of POPUP_SELS) {
+                    try {
+                        document.querySelectorAll(sel).forEach(el => {
+                            const style = window.getComputedStyle(el);
+                            if (style.display === 'none' || style.visibility === 'hidden') return;
+                            const rect = el.getBoundingClientRect();
+                            if (rect.width === 0 && rect.height === 0) return;
+                            el.querySelectorAll('a[href]').forEach(a => addLink(a, 'consent_popup'));
+                        });
+                    } catch(e) {}
+                }
+                // Fallback: scan fixed-position / high-z-index overlays that may not
+                // use semantic class names (catches Instagram's obfuscated React components)
+                try {
+                    document.querySelectorAll('div, section, aside').forEach(el => {
+                        try {
+                            const style = window.getComputedStyle(el);
+                            const zIdx = parseInt(style.zIndex) || 0;
+                            if (style.position !== 'fixed' && zIdx < 100) return;
+                            if (style.display === 'none' || style.visibility === 'hidden') return;
+                            const rect = el.getBoundingClientRect();
+                            if (rect.width === 0 || rect.height === 0) return;
+                            el.querySelectorAll('a[href]').forEach(a => addLink(a, 'consent_popup'));
+                        } catch(e) {}
+                    });
+                } catch(e) {}
+                return results;
+            }
+        """)
+    except Exception:
+        return []
+
+    result = []
+    seen_hrefs: set = set()
+    for link in links:
+        href = urljoin(base_url, link.get("href", "").strip())
+        text = link.get("text", "").strip()
+        if not href.startswith("http") or href in seen_hrefs:
+            continue
+        if not is_policy_link(href, text):
+            continue
+        if not is_trusted_domain(primary_domain, urlparse(href).netloc):
+            continue
+        seen_hrefs.add(href)
+        result.append({"href": href, "text": text, "source": "consent_popup", "context": "consent_popup"})
+        print(f"  [consent_popup] {text[:30]:<30} -> {href[:60]}")
+    return result
+
+
 async def dismiss_consent_banners(page) -> None:
     """
     Best-effort dismissal of common GDPR / cookie consent overlays.
     Run immediately after page.goto where possible.
+    Call extract_links_from_consent_popup() BEFORE this to harvest policy links.
     """
     selectors = [
         "button:has-text('Accept')",
@@ -370,6 +481,14 @@ async def dismiss_consent_banners(page) -> None:
         "button[id*='cookie']",
         "[role='button'][id*='cookie']",
         "[data-testid='cookie-policy-manage-dialog-accept-button']",
+        "[data-testid*='cookie'][data-testid*='accept']",
+        "[data-testid*='consent'][data-testid*='accept']",
+        "button:has-text('Allow all cookies')",
+        "button:has-text('Accept all cookies')",
+        "button:has-text('Accept all')",
+        "#onetrust-accept-btn-handler",
+        ".cc-accept",
+        "[id*='accept'][id*='cookie']",
     ]
 
     for sel in selectors:
@@ -389,8 +508,8 @@ async def dismiss_consent_banners(page) -> None:
 async def extract_priority_policy_links(page, base_url: str, primary_domain: str) -> list:
     """
     Priority pass: scan sign-in/login page first (discovered from homepage link text),
-    then the homepage. Returns {"href", "text", "source", "context"} dicts prepended
-    to the candidate pool so they win the scoring race.
+    then homepage. Returns dicts with source="priority_signin" or "priority_homepage".
+    Prepended to candidate pool so they win the scoring race.
     """
     found = []
     seen  = set()
@@ -411,6 +530,14 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
                 return False
             if any(s in page.url.lower() for s in ["404", "not-found", "error"]):
                 return False
+            # Wait for React/SPA to render consent popup before extracting
+            await asyncio.sleep(1.5)
+            # Harvest policy links from consent popup BEFORE dismissing it
+            popup_links = await extract_links_from_consent_popup(page, url, primary_domain)
+            for pl in popup_links:
+                if pl["href"] not in seen:
+                    seen.add(pl["href"])
+                    found.insert(0, pl)  # consent_popup links get highest priority
             await dismiss_consent_banners(page)
             await page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
             await asyncio.sleep(0.8)
@@ -487,10 +614,17 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
         except Exception:
             return False
 
-    # Load homepage and discover sign-in/login links from scraped HTML
     print("  [*] Priority scan: loading homepage to find sign-in/login links ...")
     try:
         await page.goto(base_url, wait_until="domcontentloaded", timeout=15000)
+        # Wait for React/SPA to render consent popup (popups load after JS executes)
+        await asyncio.sleep(2.5)
+        # Harvest consent popup links BEFORE dismissing the banner
+        popup_links = await extract_links_from_consent_popup(page, base_url, primary_domain)
+        for pl in popup_links:
+            if pl["href"] not in seen:
+                seen.add(pl["href"])
+                found.insert(0, pl)
         await dismiss_consent_banners(page)
         await asyncio.sleep(0.5)
     except Exception:
@@ -521,15 +655,25 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
         seen_signin.add(href)
         signin_urls.append(href)
 
-    # Scan sign-in pages first (Priority 1)
     if signin_urls:
         print(f"  [*] Priority scan: found {len(signin_urls)} sign-in page(s), scanning first ...")
         for url in signin_urls[:4]:
             await _collect_policy_links_from_page(url, "priority_signin")
 
-    # Then scan homepage (Priority 2)
     print("  [*] Priority scan: scanning homepage ...")
     await _collect_policy_links_from_page(base_url, "priority_homepage")
+
+    # Follow management/settings pages — these are navigable pages that often
+    # contain links to the actual policy documents. E.g. Instagram's
+    # /privacy/cookie_settings/ page links to privacycenter.instagram.com/policies/cookies/
+    mgmt_candidates = [
+        l for l in found
+        if any(tok in l["href"].lower() for tok in MANAGEMENT_URL_TOKENS)
+    ]
+    if mgmt_candidates:
+        print(f"  [*] Priority scan: following {len(mgmt_candidates)} management page(s) for policy links ...")
+        for mgmt in mgmt_candidates[:3]:
+            await _collect_policy_links_from_page(mgmt["href"], "management_followup")
 
     return found
 
@@ -659,66 +803,84 @@ async def scrape_policy(page, url: str, category: str, domain: str,
         await page.evaluate("window.scrollTo(0, 0)")
         await asyncio.sleep(1)
 
-        # Try to expand "See more" / accordion-style sections that often
-        # hide important policy text behind buttons or toggles.
+        # Initialise raw_text — will be populated after accordion expansion below.
+        raw_text = None
+
+        # Wait for React/SPA content to render before expanding accordions.
         try:
-            await page.evaluate("""
-                () => {
-                    const EXPAND_TOKENS = [
-                        'see more', 'see details', 'learn more',
-                        'view more', 'show more', 'more information',
-                        'read more', 'expand', 'details'
-                    ];
-
-                    const isVisible = (el) => {
-                        const rect = el.getBoundingClientRect();
-                        if (!rect.width || !rect.height) return false;
-                        const style = window.getComputedStyle(el);
-                        if (style.visibility === 'hidden' || style.display === 'none') return false;
-                        return true;
-                    };
-
-                    const clickIfExpandable = (el) => {
-                        const txt = (el.innerText || el.textContent || '').toLowerCase().trim();
-                        if (!txt) return;
-                        if (!isVisible(el)) return;
-                        if (EXPAND_TOKENS.some(t => txt.includes(t))) {
-                            try { el.click(); } catch (e) {}
-                        }
-                    };
-
-                    // Buttons and clickable elements
-                    document.querySelectorAll('button, [role="button"], a').forEach(clickIfExpandable);
-
-                    // Generic accordions / disclosure widgets
-                    document.querySelectorAll('[aria-expanded="false"]').forEach(el => {
-                        if (!isVisible(el)) return;
-                        try { el.click(); } catch (e) {}
-                    });
-                }
-            """)
-            await asyncio.sleep(2)
+            for _ in range(8):
+                content_len = await page.evaluate("""
+                    () => {
+                        const main = document.querySelector('main')
+                            || document.querySelector('article')
+                            || document.querySelector('[role="main"]')
+                            || document.body;
+                        return main ? (main.innerText || '').trim().length : 0;
+                    }
+                """)
+                if content_len > 500:
+                    break
+                await asyncio.sleep(1)
         except Exception:
-            # Expansion is a best-effort enhancement; continue even if it fails.
             pass
 
-        # Try extracting via innerText first (best for JS-rendered SPAs)
-        raw_text = await page.evaluate("""
-            () => {
-                // Remove noise elements
-                ['script','style'].forEach(tag => {
-                    document.querySelectorAll(tag).forEach(el => el.remove());
-                });
-                const main = document.querySelector('main')
-                    || document.querySelector('article')
-                    || document.querySelector('[role="main"]')
-                    || document.querySelector('.policy-content')
-                    || document.querySelector('.privacy-content')
-                    || document.querySelector('.legal-content')
-                    || document.body;
-                return main ? main.innerText : document.body.innerText;
-            }
-        """)
+        # Expand all accordion / disclosure sections (3 passes, waits between each).
+        try:
+            for _pass in range(3):
+                expanded = await page.evaluate("""
+                    () => {
+                        const isVisible = (el) => {
+                            const rect = el.getBoundingClientRect();
+                            if (!rect.width || !rect.height) return false;
+                            const style = window.getComputedStyle(el);
+                            return style.visibility !== 'hidden' && style.display !== 'none';
+                        };
+                        let clicked = 0;
+                        document.querySelectorAll('[aria-expanded="false"]').forEach(el => {
+                            if (!isVisible(el)) return;
+                            try { el.click(); clicked++; } catch (e) {}
+                        });
+                        const EXPAND_TOKENS = [
+                            'see more', 'see details', 'learn more', 'view more',
+                            'show more', 'more information', 'read more', 'expand', 'details'
+                        ];
+                        document.querySelectorAll('button, [role="button"]').forEach(el => {
+                            const txt = (el.innerText || el.textContent || '').toLowerCase().trim();
+                            if (!txt || !isVisible(el)) return;
+                            if (EXPAND_TOKENS.some(t => txt.includes(t))) {
+                                try { el.click(); clicked++; } catch (e) {}
+                            }
+                        });
+                        return clicked;
+                    }
+                """)
+                if expanded == 0:
+                    break
+                await asyncio.sleep(1.5)
+        except Exception:
+            pass
+
+        # Re-extract innerText after accordion expansion
+        try:
+            expanded_text = await page.evaluate("""
+                () => {
+                    ['script','style'].forEach(tag => {
+                        document.querySelectorAll(tag).forEach(el => el.remove());
+                    });
+                    const main = document.querySelector('main')
+                        || document.querySelector('article')
+                        || document.querySelector('[role="main"]')
+                        || document.querySelector('.policy-content')
+                        || document.querySelector('.privacy-content')
+                        || document.querySelector('.legal-content')
+                        || document.body;
+                    return main ? main.innerText : document.body.innerText;
+                }
+            """)
+            if expanded_text and len(expanded_text.strip()) > 300:
+                raw_text = expanded_text
+        except Exception:
+            pass
 
         # Also get HTML for structured markdown conversion
         raw_html = await page.content()
@@ -729,7 +891,7 @@ async def scrape_policy(page, url: str, category: str, domain: str,
         markdown_content = html_to_markdown(soup, base_url=url)
 
         # If markdown is too short (JS-heavy SPA), fall back to plain innerText
-        if len(markdown_content.strip()) < 300 and raw_text and len(raw_text.strip()) > 300:
+        if len(markdown_content.strip()) < 1000 and raw_text and len(raw_text.strip()) > 1000:
             print(f"  [~] HTML parse thin — using innerText fallback")
             # Convert plain text to basic markdown
             lines = []
@@ -769,7 +931,6 @@ async def scrape_policy(page, url: str, category: str, domain: str,
 
         # Detect "hub" pages that mostly route to sub-policies rather than
         # containing the full legal text themselves.
-        # Skip for priority-sourced URLs — trust the sign-in page link directly.
         if word_count < 500 and _depth < 2 and not _from_priority:
             policy_links = []
             for a in soup.find_all("a", href=True):
@@ -1010,8 +1171,6 @@ async def collect_policies(
         page = await context.new_page()
 
         # ── Step 2a: Priority scan — sign-in page first, then homepage ─────────
-        # Sign-in pages are legally required to surface policy links near forms.
-        # These links are prepended so they win the scoring race.
         print("[*] Running priority scan (sign-in page → homepage) ...")
         priority_links = await extract_priority_policy_links(page, target_url, domain)
         if priority_links:
@@ -1076,7 +1235,12 @@ async def collect_policies(
                 continue
             category  = classify_policy(href, text)
             url_score = score_url(href)
-            # Boost URLs whose path contains the exact category keyword (highest confidence)
+            # +200 boost for links discovered directly inside a consent/cookie popup
+            # These are the most authoritative source — e.g. Instagram only shows
+            # its cookie policy link inside the GDPR consent dialog
+            if link.get("source") == "consent_popup":
+                url_score += 200
+            # +100 boost when URL path contains the exact category keyword
             _path_lower = urlparse(href).path.lower()
             if category == "cookie_policy" and "/cookie" in _path_lower:
                 url_score += 100
