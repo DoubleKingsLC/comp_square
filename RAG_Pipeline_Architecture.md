@@ -2,7 +2,7 @@
 
 **Project:** LLM-Driven Privacy Compliance Framework
 **Author:** Aaron Joseph Jean — 25233118
-**Last Updated:** 2026-03-05
+**Last Updated:** 2026-03-05 (Revised: clarified runtime vs. pre-loaded inputs)
 
 ---
 
@@ -27,15 +27,31 @@
 
 ## 1. System Overview
 
-The pipeline takes three types of input and produces a scored, cited compliance report:
+The pipeline uses two distinct input categories:
+
+### Pre-loaded (once, into Vector DB)
 
 | Input | Source | Purpose |
 |---|---|---|
-| **Compliance Documents** | GDPR, HIPAA, DPDP, CCPA, PECR | Ground truth — what the law requires |
+| **Compliance Documents** | GDPR, HIPAA, DPDP, CCPA, PECR | Ground truth — what the law requires. Static. Loaded once. |
+
+### Runtime Inputs (per website scan, passed directly to LLM)
+
+| Input | Source | Purpose |
+|---|---|---|
 | **Website Policy Documents** | `policy_scraper_2.py` output (`.md`) | What the website claims to do |
 | **HAR + Telemetry** | `telemetry_collector.py` output (`.har`, `.json`) | What the website actually does |
 
-The LLM compares (2) and (3) against (1) and produces:
+**Why this distinction matters:**
+- Compliance regulations are **static** — GDPR doesn't change weekly. Pre-loading them into a vector DB lets you retrieve the exact relevant articles efficiently without passing the entire GDPR text to the LLM every time.
+- Website policies and HAR files are **site-specific and short-lived**. They change per scan. The LLM needs to read them **in full** to catch nuances — chunking them into a vector DB would lose context and introduce retrieval misses. Pass them directly.
+
+At runtime, the pipeline:
+1. **Retrieves** the relevant compliance law chunks from the vector DB
+2. **Injects** the scraped policy text + HAR behavioral evidence as direct context
+3. **LLM scores** each compliance dimension and cites the specific article + the specific policy clause that passes/fails
+
+The LLM produces:
 - A **score per compliance dimension** (0–100)
 - A **citation** to the exact law article breached
 - **Behavioral evidence** from the HAR file backing the finding
@@ -46,50 +62,58 @@ The LLM compares (2) and (3) against (1) and produces:
 ## 2. Pipeline Diagram
 
 ```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PRE-LOAD PHASE (run once)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────┐
+│  Compliance Regulations                 │
+│  GDPR, HIPAA, DPDP, CCPA, PECR (text)  │
+└──────────────────┬──────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────┐
+│  compliance_loader.py                   │
+│  • Parse PDF/text                       │
+│  • Split by article/clause              │
+│  • Tag: regulation, article, clause,    │
+│    requirement_type, severity           │
+│  • Embed with legal-BERT                │
+└──────────────────┬──────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────┐
+│  VECTOR DATABASE                        │
+│  ┌───────────────────────────────────┐  │
+│  │  compliance_docs collection       │  │
+│  │  GDPR Art 7.1, Art 13.1.e, ...   │  │
+│  │  DPDP Art 9, CCPA §1798.100 ...  │  │
+│  └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  RUNTIME PHASE (per website scan)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Input:  https://www.instagram.com
+            │
+            ├──► policy_scraper_2.py  ──►  privacy_policy.md
+            │                              cookie_policy.md
+            │
+            └──► telemetry_collector.py ─► site.har
+                                           telemetry.json
+
+                   │
+                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                         INGESTION LAYER                             │
-├──────────────────────┬─────────────────────┬────────────────────────┤
-│  Compliance Docs     │  Website Policies   │  HAR + Telemetry       │
-│  GDPR, HIPAA,        │  privacy_policy.md  │  site.har              │
-│  DPDP, CCPA, PECR    │  cookie_policy.md   │  telemetry.json        │
-└──────────┬───────────┴──────────┬──────────┴───────────┬────────────┘
-           │                      │                       │
-           ▼                      ▼                       ▼
-┌──────────────────────┐ ┌───────────────────┐ ┌─────────────────────┐
-│  compliance_loader   │ │  policy_loader    │ │  har_extractor      │
-│  • Parse PDF/text    │ │  • Parse markdown │ │  • Cookie timeline  │
-│  • Chunk by article  │ │  • Chunk by       │ │  • Pre-consent      │
-│  • Tag: regulation,  │ │    ## heading     │ │    tracking events  │
-│    article, clause,  │ │  • Tag: domain,   │ │  • 3rd-party calls  │
-│    requirement_type  │ │    category,      │ │  • Tag: timing,     │
-│                      │ │    section        │ │    cookie_name,     │
-│                      │ │                   │ │    third_party      │
-└──────────┬───────────┘ └──────────┬────────┘ └──────────┬──────────┘
-           │                        │                      │
-           ▼                        ▼                      ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        EMBEDDING MODEL                              │
-│         legal-BERT (compliance)  ──  MiniLM (policies + HAR)       │
-└──────────────────────────────────┬──────────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                        VECTOR DATABASE                              │
-│  ┌─────────────────────┐  ┌──────────────────┐  ┌────────────────┐ │
-│  │  compliance_docs    │  │  website_policies│  │  har_behaviors │ │
-│  │  (GDPR Art 7 ...)   │  │  (cookie section)│  │  (pre-consent  │ │
-│  │  rich legal metadata│  │  domain metadata │  │  cookie events)│ │
-│  └─────────────────────┘  └──────────────────┘  └────────────────┘ │
-└──────────────────────────────────┬──────────────────────────────────┘
-                                   │
-                                   ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                      RAG QUERY ENGINE                               │
+│  COMPLIANCE SCORER  (rag/scorer.py)                                 │
+│                                                                     │
 │  For each compliance dimension:                                     │
-│    1. Retrieve top-k from compliance_docs  (what law requires)      │
-│    2. Retrieve top-k from website_policies (what site claims)       │
-│    3. Retrieve top-k from har_behaviors    (what site actually does)│
-│    4. Assemble context window for LLM                               │
+│    1. Query vector DB ──► retrieve top-k compliance law chunks      │
+│    2. Read policy .md files in full ──► inject as direct context    │
+│    3. Parse HAR events ──► inject behavioral evidence as context    │
+│    4. Assemble prompt → send to LLM                                 │
 └──────────────────────────────────┬──────────────────────────────────┘
                                    │
                                    ▼
@@ -115,7 +139,9 @@ The LLM compares (2) and (3) against (1) and produces:
 
 ## 3. Layer 1 — Ingestion
 
-### 3.1 Compliance Documents
+> **Key design rule:** Only compliance regulation documents are stored in the vector DB. Website policies and HAR files are runtime inputs — read in full and injected directly into the LLM prompt. This avoids retrieval misses caused by chunking site-specific content and ensures the LLM sees the complete policy text rather than fragments.
+
+### 3.1 Compliance Documents (Pre-loaded into Vector DB)
 
 **What to collect:**
 
@@ -179,48 +205,38 @@ GDPR Article 7 — Conditions for consent
 
 ---
 
-### 3.2 Website Policy Documents
+### 3.2 Website Policy Documents (Runtime — injected directly into LLM)
 
 Output of `policy_scraper_2.py` — already saved as markdown with YAML front matter.
 
-**Re-chunk by `## Section` heading** (headings already present in scraped markdown):
+**Do NOT chunk or store in vector DB.** Pass the full `.md` file content as direct LLM context at runtime. Typical policy documents are 2,000–15,000 words — well within a 200K context window.
 
+**Runtime context format:**
+
+```python
+policy_context = f"""
+WEBSITE PRIVACY POLICY ({domain})
+Source: {source_url}
+Scraped: {scraped_at}
+---
+{privacy_policy_full_text}
+
+WEBSITE COOKIE POLICY ({domain})
+Source: {cookie_policy_url}
+---
+{cookie_policy_full_text}
+"""
 ```
-www.instagram.com_privacy_policy.md
-  ├── Chunk 1: "What information do we collect?"
-  ├── Chunk 2: "How do we use your information?"
-  ├── Chunk 3: "How do we share information?"
-  └── ...
 
-www.instagram.com_cookie_policy.md
-  ├── Chunk 1: "What are cookies, and what does this policy cover?"
-  ├── Chunk 2: "Why do we use cookies?"
-  └── ...
-```
-
-**Metadata schema per chunk:**
-
-```json
-{
-  "text": "Cookies are small pieces of text used to store information on web browsers...",
-  "metadata": {
-    "domain": "www.instagram.com",
-    "category": "cookie_policy",
-    "source_url": "https://www.instagram.com/legal/cookies/",
-    "scraped_at": "2026-03-05T11:18:22Z",
-    "section_heading": "What are cookies, and what does this policy cover?",
-    "chunk_index": 0,
-    "word_count": 145,
-    "effective_date": "December 12, 2023"
-  }
-}
-```
+If a policy is extremely long (>50K words), then chunk by `## heading` sections and pass only the sections relevant to the compliance dimension being scored.
 
 ---
 
-### 3.3 HAR + Telemetry
+### 3.3 HAR + Telemetry (Runtime — parsed and summarized for LLM)
 
 This is the **behavioral evidence layer** — the critical differentiator. It lets the system say *"the site does X, despite claiming Y"*.
+
+**Do NOT store in vector DB.** At runtime, `har_extractor.py` parses the `.har` file and produces a structured behavioral summary that is injected into the LLM prompt.
 
 **Extract from `.har` file:**
 
@@ -233,24 +249,40 @@ This is the **behavioral evidence layer** — the critical differentiator. It le
 | `declared_vs_actual` | Cookies in policy vs cookies actually set | GDPR Art 5.1 (accuracy) |
 | `long_retention` | Cookies with duration > declared retention | GDPR Art 5.1.e |
 
-**Metadata schema per HAR event:**
+**Runtime context format (injected per LLM call):**
+
+```python
+har_context = f"""
+BEHAVIORAL EVIDENCE — {domain} ({scan_date})
+HAR file: {har_file}
+
+Pre-consent cookies detected (set before any consent interaction):
+  - Cookie '_fbp' (facebook.com) set 340ms after page load. Duration: 90 days.
+  - Cookie '_ga' (google-analytics.com) set 120ms after page load. Duration: 2 years.
+
+Third-party domains contacted (not declared in cookie policy):
+  - pixel.facebook.com
+  - analytics.tiktok.com
+  - [12 others]
+
+Total third-party domains: 47
+Declared in policy: 35
+Undeclared: 12
+"""
+```
+
+The raw HAR JSON schema (for `har_extractor.py` internal use):
 
 ```json
 {
-  "text": "Cookie '_fbp' set by facebook.com 340ms after page load, before any consent interaction was detected. Duration: 90 days.",
-  "metadata": {
-    "domain": "www.instagram.com",
-    "evidence_type": "pre_consent_cookie",
-    "cookie_name": "_fbp",
-    "cookie_domain": "facebook.com",
-    "third_party": true,
-    "timing_ms": 340,
-    "timing_relative_to_consent": "before",
-    "cookie_duration_days": 90,
-    "har_file": "instagram.com_20260228.har",
-    "screenshot_ref": "instagram_20260228_screenshot.png",
-    "har_timestamp": "2026-02-28T18:29:00Z"
-  }
+  "domain": "www.instagram.com",
+  "evidence_type": "pre_consent_cookie",
+  "cookie_name": "_fbp",
+  "cookie_domain": "facebook.com",
+  "third_party": true,
+  "timing_ms": 340,
+  "timing_relative_to_consent": "before",
+  "cookie_duration_days": 90
 }
 ```
 
@@ -258,17 +290,17 @@ This is the **behavioral evidence layer** — the critical differentiator. It le
 
 ## 4. Layer 2 — Chunking & Metadata
 
-### Chunk Size Guidelines
+### Chunk Size Guidelines (Compliance Docs only)
 
 | Collection | Chunk Size | Overlap | Reason |
 |---|---|---|---|
 | `compliance_docs` | 1 article / clause | 0 | Legal units must stay intact for valid citations |
-| `website_policies` | 1 `##` section | ~50 words | Preserve section context for accurate citations |
-| `har_behaviors` | 1 event summary | 0 | Each event is self-contained evidence |
+
+Website policies and HAR events are **not chunked for vector DB** — they are passed in full as runtime context.
 
 ### Why Metadata Matters
 
-The metadata schema is what makes the output **explainable** rather than just a score. When the LLM says:
+The metadata on compliance chunks is what makes the output **explainable** and **citation-quality**. When the LLM says:
 
 > *"Score: 12/100 — FAIL"*
 
@@ -280,39 +312,37 @@ The metadata enables it to instead say:
 
 ## 5. Layer 3 — Vector Database
 
-### Three Separate Collections
+### Single Collection
 
 ```
 vector_db/
-├── compliance_docs      ← legal requirements (static, loaded once)
-├── website_policies     ← scraped policies (updated per site)
-└── har_behaviors        ← behavioral evidence (updated per site scan)
+└── compliance_docs      ← legal requirements only (static, loaded once)
 ```
 
-Keeping them separate allows **targeted retrieval** — you can query each collection independently and assemble the three-part context (law / claim / behaviour) before sending to the LLM.
+The vector DB is queried at runtime to retrieve the specific law articles relevant to the compliance dimension being scored. Website policies and HAR data are **not stored here** — they are read from disk and injected directly into the LLM prompt.
 
-### Metadata Filtering Examples
+### Metadata Filtering at Runtime
 
 ```python
-# "What does GDPR say about cookie consent?"
+# "What does GDPR say about pre-consent cookie requirements?"
 db.query(
-    vector=embed("cookie consent requirement"),
+    vector=embed("cookie consent required before tracking"),
     filter={"regulation": "GDPR", "requirement_type": "cookies"},
     top_k=5
 )
 
-# "What does instagram.com's cookie policy claim?"
+# "What does DPDP say about children's data?"
 db.query(
-    vector=embed("cookie consent"),
-    filter={"domain": "www.instagram.com", "category": "cookie_policy"},
+    vector=embed("children minors consent data"),
+    filter={"regulation": "DPDP", "requirement_type": "children"},
     top_k=3
 )
 
-# "What did instagram.com actually do with cookies?"
+# Multi-jurisdiction: all regulations covering consent
 db.query(
-    vector=embed("cookie set before consent"),
-    filter={"domain": "www.instagram.com", "evidence_type": "pre_consent_cookie"},
-    top_k=5
+    vector=embed("consent must precede processing"),
+    filter={"requirement_type": "consent"},
+    top_k=8
 )
 ```
 
@@ -337,29 +367,34 @@ db.query(
 
 ### Per-Dimension Query Flow
 
-For each compliance dimension, the retriever assembles a three-part context:
+For each compliance dimension:
+
+1. **Retrieve** relevant compliance law chunks from vector DB (semantic + metadata filter)
+2. **Load** full policy markdown files from disk (privacy_policy.md, cookie_policy.md)
+3. **Parse** HAR file → extract behavioral events relevant to this dimension
+4. **Assemble** the three-part context window:
 
 ```
 ┌──────────────────────────────────────────────┐
-│  COMPLIANCE REQUIREMENT (from law)           │
+│  COMPLIANCE REQUIREMENT (retrieved from DB)  │
 │  GDPR Article 7(1): Consent must be freely   │
 │  given, specific, informed and unambiguous   │
 │  prior to processing...                      │
 ├──────────────────────────────────────────────┤
-│  WEBSITE POLICY CLAIM                        │
+│  WEBSITE POLICY CLAIM (full text, from disk) │
 │  "We only use personalisation cookies after  │
 │  you have given us your explicit consent..." │
 ├──────────────────────────────────────────────┤
-│  BEHAVIOURAL EVIDENCE (from HAR)             │
+│  BEHAVIOURAL EVIDENCE (parsed from HAR)      │
 │  Cookie '_fbp' (facebook.com) set 340ms      │
 │  after page load, before any consent         │
 │  interaction. Duration: 90 days.             │
 └──────────────────────────────────────────────┘
 ```
 
-### Hybrid Search
+### Hybrid Search (for compliance_docs retrieval)
 
-Use **dense + sparse search** for best recall:
+Use **dense + sparse search** for best recall on legal text:
 - **Dense (semantic):** catches paraphrasing — "users must agree before tracking" matches "prior consent required"
 - **Sparse (BM25/keyword):** catches exact legal terms — "data subject", "Article 7", "lawful basis"
 
@@ -464,17 +499,9 @@ Return JSON:
 6. Upsert to `compliance_docs` collection in vector DB
 7. **Run once** — compliance docs don't change often
 
-### Phase 2 — Policy Document Loader `ingestion/policy_loader.py`
+### Phase 2 — HAR Behavioral Extractor `ingestion/har_extractor.py`
 
-1. Read `.md` files from `policy_documents/` output of `policy_scraper_2.py`
-2. Parse YAML front matter for domain, category, source_url, scraped_at
-3. Split by `## heading` sections
-4. Tag each chunk with domain, category, section_heading, chunk_index
-5. Embed with same model as compliance docs for semantic comparability
-6. Upsert to `website_policies` collection
-7. **Run per site** — re-run whenever `policy_scraper_2.py` produces new output
-
-### Phase 3 — HAR Behavioral Extractor `ingestion/har_extractor.py`
+This is a **runtime utility** — not a vector DB loader. It parses `.har` files on demand and returns structured behavioral evidence for injection into LLM prompts.
 
 1. Load `.har` JSON from `telemetry_output/`
 2. Extract all cookie-set events (`Set-Cookie` headers), sort by timestamp
@@ -482,20 +509,42 @@ Return JSON:
 4. Flag cookies set before consent timestamp as `pre_consent_cookie`
 5. Cross-reference third-party request domains against declared policy domains
 6. Cross-reference cookie names against policy-declared cookie list
-7. Summarize each finding as short text + structured metadata
-8. Upsert to `har_behaviors` collection
+7. Return structured evidence dict (not upserted anywhere — used directly in prompt)
+
+```python
+# Usage at runtime
+evidence = har_extractor.extract("telemetry_output/instagram.com_20260305.har",
+                                  telemetry="telemetry_output/instagram.com_20260305_telemetry.json")
+# Returns: {"pre_consent_cookies": [...], "third_party_domains": [...], ...}
+```
+
+### Phase 3 — Policy Text Reader `ingestion/policy_reader.py`
+
+This is also a **runtime utility** — reads scraped policy markdown files from disk for direct injection into prompts.
+
+1. Read `policy_documents/{domain}_privacy_policy.md` and `{domain}_cookie_policy.md`
+2. Parse YAML front matter for metadata (domain, source_url, scraped_at, effective_date)
+3. Return full text (for policies < 50K words) or section dict keyed by `## heading` (for long policies)
+
+```python
+# Usage at runtime
+policies = policy_reader.load("www.instagram.com")
+# Returns: {"privacy_policy": {"text": "...", "metadata": {...}},
+#           "cookie_policy":  {"text": "...", "metadata": {...}}}
+```
 
 ### Phase 4 — Scoring Pipeline `rag/scorer.py`
 
 1. Define compliance dimensions (see Section 11)
-2. For each dimension:
-   a. Query `compliance_docs` for relevant law chunks (metadata filter by requirement_type)
-   b. Query `website_policies` for relevant policy chunks (filter by domain + category)
-   c. Query `har_behaviors` for relevant behavioral evidence (filter by domain + evidence_type)
-   d. Assemble context window
+2. Load policy text and HAR evidence for the target domain (phases 2 + 3 above)
+3. For each dimension:
+   a. Query `compliance_docs` vector DB for relevant law chunks (metadata filter by requirement_type)
+   b. Select relevant HAR evidence events for this dimension from the runtime evidence dict
+   c. Select relevant policy sections for this dimension (keyword filter or pass full text)
+   d. Assemble context window: law chunks + policy text + HAR evidence
    e. Call LLM (Haiku) with structured scoring prompt
    f. Parse and store JSON response
-3. Aggregate per-dimension scores → overall score (weighted by severity)
+4. Aggregate per-dimension scores → overall score (weighted by severity)
 
 ### Phase 5 — Report Builder `rag/report_builder.py`
 
@@ -593,16 +642,16 @@ comp_square/
 │   ├── instagram.com_20260305_telemetry.json
 │   └── ...
 │
-├── ingestion/                       ← Phase 2: document loaders
+├── ingestion/                       ← document processing utilities
 │   ├── __init__.py
-│   ├── compliance_loader.py         ← parse + chunk compliance docs → vector DB
-│   ├── policy_loader.py             ← chunk scraped .md files → vector DB
-│   └── har_extractor.py             ← extract behavioral events from .har → vector DB
+│   ├── compliance_loader.py         ← parse + chunk compliance docs → vector DB (run once)
+│   ├── policy_reader.py             ← read scraped .md files from disk → runtime context
+│   └── har_extractor.py             ← parse .har + telemetry.json → runtime evidence dict
 │
-├── vectordb/                        ← Phase 2: vector DB client
+├── vectordb/                        ← vector DB client (compliance_docs only)
 │   ├── __init__.py
 │   ├── db_client.py                 ← Chroma / Qdrant setup + collection management
-│   └── embedder.py                  ← embedding model wrapper (legal-bert / MiniLM)
+│   └── embedder.py                  ← embedding model wrapper (legal-bert)
 │
 ├── rag/                             ← Phase 3: RAG + scoring
 │   ├── __init__.py
