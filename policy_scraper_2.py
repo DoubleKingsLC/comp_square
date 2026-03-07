@@ -93,6 +93,8 @@ TRUSTED_ECOSYSTEMS: Dict[str, set[str]] = {
         "about.fb.com",
         "instagram.com",
         "help.instagram.com",
+        "privacycenter.instagram.com",
+        "privacycenter.facebook.com",
         "meta.com",
         "whatsapp.com",
         "www.whatsapp.com",
@@ -103,6 +105,8 @@ TRUSTED_ECOSYSTEMS: Dict[str, set[str]] = {
         "about.fb.com",
         "instagram.com",
         "help.instagram.com",
+        "privacycenter.instagram.com",
+        "privacycenter.facebook.com",
         "meta.com",
         "whatsapp.com",
         "www.whatsapp.com",
@@ -123,6 +127,8 @@ TRUSTED_ECOSYSTEMS: Dict[str, set[str]] = {
         "about.fb.com",
         "instagram.com",
         "help.instagram.com",
+        "privacycenter.instagram.com",
+        "privacycenter.facebook.com",
         "meta.com",
         "whatsapp.com",
         "www.whatsapp.com",
@@ -258,8 +264,9 @@ def is_policy_link(href: str, text: str) -> bool:
 def html_to_markdown(soup: BeautifulSoup, base_url: str = "") -> str:
     """
     Convert BeautifulSoup HTML to clean Markdown.
-    Uses iterative tag-by-tag approach — no recursion, no NavigableString issues.
+    Uses NavigableString traversal to avoid duplicating text from nested containers.
     """
+    import bs4
     # Strip the most obvious noise first.
     for tag in soup(["script", "style", "svg", "iframe", "noscript"]):
         tag.decompose()
@@ -271,67 +278,126 @@ def html_to_markdown(soup: BeautifulSoup, base_url: str = "") -> str:
             text_len = len(container.get_text(separator=" ", strip=True))
         except Exception:
             text_len = 0
-        # If the container has very little text, it's likely navigation / chrome.
         if text_len < 1000:
             container.decompose()
 
-    body  = soup.find("main") or soup.find("article") or soup.find("body") or soup
-    lines = []
+    body = soup.find("main") or soup.find("article") or soup.find("body") or soup
+    
+    blocks = []
+    current_block = []
+    
+    def flush_block():
+        if current_block:
+            blocks.append("".join(current_block).strip())
+            current_block.clear()
 
-    # Walk every tag in document order
-    for el in body.find_all(True):
-        try:
-            tag = el.name
-            if not tag:
+    list_counters = {}
+
+    for element in body.descendants:
+        if isinstance(element, bs4.element.NavigableString):
+            text = str(element).strip()
+            if not text:
                 continue
-
-            if tag in ("h1","h2","h3","h4","h5","h6"):
-                text = el.get_text(separator=" ", strip=True)
-                if text:
-                    level = int(tag[1])
-                    lines.append(f"\n{'#' * level} {text}\n")
-
-            elif tag == "p":
-                text = el.get_text(separator=" ", strip=True)
-                if text:
-                    lines.append(f"\n{text}\n")
-
-            elif tag == "li":
-                text = el.get_text(separator=" ", strip=True)
-                parent = el.parent.name if el.parent else "ul"
-                if text:
-                    lines.append(f"- {text}")
-
-            elif tag == "table":
-                for r_idx, row in enumerate(el.find_all("tr")):
+                
+            parent = element.parent
+            if parent.name in ["script", "style", "noscript"]:
+                continue
+                
+            # Handle Headings
+            if parent.name and re.match(r"^h[1-6]$", parent.name, re.I):
+                level = int(parent.name[1])
+                flush_block()
+                blocks.append(f"\n{'#' * level} {text}\n")
+                continue
+                
+            prefix = ""
+            suffix = ""
+            
+            # Handle Lists
+            li = parent.find_parent("li")
+            if li and li not in list_counters:
+                flush_block()
+                list_counters[li] = True
+                ol = li.find_parent("ol")
+                if ol:
+                    idx = len([sib for sib in li.previous_siblings if sib.name == "li"]) + 1
+                    prefix = f"{idx}. "
+                else:
+                    prefix = "- "
+                    
+            # Handle inline formatting
+            if parent.name in ["strong", "b"]:
+                prefix += "**"
+                suffix = "**"
+            elif parent.name in ["em", "i"]:
+                prefix += "*"
+                suffix = "*"
+            elif parent.name == "a":
+                href = parent.get("href", "")
+                if href and href.startswith("/"):
+                    href = urljoin(base_url, href)
+                suffix = f"]({href})"
+                prefix += "["
+                
+            current_block.append(f"{prefix}{text}{suffix} ")
+            
+        elif isinstance(element, bs4.element.Tag):
+            if element.name in ["p", "div", "section", "article", "br", "li"]:
+                flush_block()
+            elif element.name == "table":
+                flush_block()
+                for r_idx, row in enumerate(element.find_all("tr")):
                     cells = row.find_all(["th","td"])
                     if cells:
-                        row_text = " | ".join(c.get_text(strip=True) for c in cells)
-                        lines.append(f"| {row_text} |")
+                        row_text = " | ".join(c.get_text(separator=" ", strip=True) for c in cells)
+                        blocks.append(f"| {row_text} |")
                         if r_idx == 0:
-                            lines.append("|" + " --- |" * len(cells))
-                lines.append("")
+                            blocks.append("|" + " --- |" * len(cells))
+                blocks.append("")
+                # Tell bs4 to drop this so we don't process strings again
+                element.decompose()
+                
+    flush_block()
 
-            elif tag == "a":
-                # Only top-level links (not inside p/li — those get captured by parent)
-                if el.parent and el.parent.name not in ("p","li","td","th","span","div"):
-                    text = el.get_text(strip=True)
-                    href = el.get("href","")
-                    if href and base_url:
-                        href = urljoin(base_url, href)
-                    if text:
-                        lines.append(f"[{text}]({href})" if href else text)
-
-            elif tag == "hr":
-                lines.append("\n---\n")
-
-        except Exception:
+    md = "\n\n".join(b for b in blocks if b)
+    
+    # Clean up orphaned symbols and excessive newlines
+    md = re.sub(r'(?m)^[\$\/\\\s]+$', '', md)
+    md = re.sub(r'\n{3,}', '\n\n', md)
+    md = md.replace('/$', '').replace('$/', '').replace('$', '')
+    
+    # ── Advanced Block Deduplication ────────────────────────────────────
+    # Sites like Instagram render expanded/collapsed accordion states
+    # simultaneously in the DOM, causing massive block duplication.
+    # We deduplicate at the block level (paragraphs/lists).
+    raw_blocks = [b.strip() for b in md.split("\n\n") if b.strip()]
+    unique_blocks = []
+    
+    for i, current_block in enumerate(raw_blocks):
+        if not current_block:
             continue
-
-    md = "\n".join(lines)
-    md = re.sub(r"\n{3,}", "\n\n", md)
-    return md.strip()
-
+            
+        # For very short blocks (like headings "Privacy Policy"), keep them
+        if len(current_block) < 30:
+            unique_blocks.append(current_block)
+            continue
+            
+        # Check against the last 3 added blocks to catch immediate repeats
+        # resulting from duplicated React subtrees or adjacent mobile/desktop divs
+        is_duplicate = False
+        simplified_current = re.sub(r'[\W_]+', '', current_block.lower())
+        
+        for prev_block in unique_blocks[-3:]:
+            simplified_prev = re.sub(r'[\W_]+', '', prev_block.lower())
+            # If the text content is 95%+ identical (ignoring formatting), drop it
+            if simplified_current == simplified_prev or simplified_current in simplified_prev:
+                is_duplicate = True
+                break
+                
+        if not is_duplicate:
+            unique_blocks.append(current_block)
+            
+    return "\n\n".join(unique_blocks)
 
 def extract_effective_date(text: str | None) -> str | None:
     """
@@ -522,6 +588,14 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
         "get started", "join", "create an account",
     ]
 
+    # Well-known login/signup paths — tried as fallback when DOM discovery yields nothing.
+    COMMON_AUTH_PATHS = [
+        "/login", "/signin", "/sign-in", "/accounts/login",
+        "/auth/login", "/auth/signin", "/user/login",
+        "/signup", "/sign-up", "/register", "/accounts/signup",
+        "/join", "/create-account",
+    ]
+
     async def _collect_policy_links_from_page(url: str, source_label: str) -> bool:
         nonlocal found, seen
         try:
@@ -630,21 +704,111 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
     except Exception:
         pass
 
-    all_links = await page.evaluate("""
-        () => Array.from(document.querySelectorAll('a[href]')).map(a => ({
-            href: a.href,
-            text: (a.innerText || a.textContent || a.getAttribute('aria-label') || '').trim().substring(0, 80)
-        }))
+    # ── Comprehensive login/signup element discovery ──────────────────────
+    # Scans <a>, <button>, [role="button"], and onclick-bearing elements.
+    # Extracts URLs from: href, data-href, formaction, onclick JS, and
+    # the closest parent <a>.  Matches against visible text AND aria-label.
+    all_interactive = await page.evaluate("""
+        () => {
+            const results = [];
+            const seen = new Set();
+
+            // Extract a URL-like string from an onclick attribute value.
+            const extractOnclickUrl = (onclick) => {
+                if (!onclick) return '';
+                // window.location = '/login'  or  location.href='/signup'
+                const locMatch = onclick.match(
+                    /(?:window\.)?location(?:\.href)?\s*=\s*['"]([^'"]+)['"]/
+                );
+                if (locMatch) return locMatch[1];
+                // window.open('/login', ...)
+                const openMatch = onclick.match(
+                    /window\.open\s*\(\s*['"]([^'"]+)['"]/
+                );
+                if (openMatch) return openMatch[1];
+                // navigate('/login')  or  router.push('/login')
+                const navMatch = onclick.match(
+                    /(?:navigate|push|replace)\s*\(\s*['"]([^'"]+)['"]/
+                );
+                if (navMatch) return navMatch[1];
+                return '';
+            };
+
+            // All clickable / interactive elements that could be a login CTA.
+            const SELS = 'a[href], button, [role="button"], [onclick]';
+            document.querySelectorAll(SELS).forEach(el => {
+                // --- Resolve visible text + aria-label ---
+                const visibleText = (el.innerText || el.textContent || '').trim();
+                const ariaLabel   = (el.getAttribute('aria-label') || '').trim();
+                const title       = (el.getAttribute('title') || '').trim();
+                const text = (visibleText || ariaLabel || title).substring(0, 120);
+
+                // --- Resolve destination URL from multiple sources ---
+                let href = '';
+
+                // 1. Standard href (works for <a> elements)
+                if (el.href) {
+                    href = el.href;
+                }
+                // 2. data-href / data-url custom attributes
+                if (!href) {
+                    href = el.getAttribute('data-href')
+                        || el.getAttribute('data-url')
+                        || el.getAttribute('data-link') || '';
+                }
+                // 3. formaction (on <button> inside a <form>)
+                if (!href && el.formAction && el.formAction !== window.location.href) {
+                    href = el.formAction;
+                }
+                // 4. Closest parent <a> (button wrapped inside a link)
+                if (!href) {
+                    const parentA = el.closest('a[href]');
+                    if (parentA && parentA.href) href = parentA.href;
+                }
+                // 5. onclick attribute URL extraction
+                if (!href) {
+                    href = extractOnclickUrl(el.getAttribute('onclick'));
+                }
+
+                href = (href || '').trim();
+                if (!href || href === '#' || href.startsWith('javascript:')) return;
+                if (seen.has(href)) return;
+                seen.add(href);
+
+                results.push({ href, text });
+            });
+
+            // Also scan <form> action attributes — some login forms
+            // use action="/accounts/login" without a visible link.
+            document.querySelectorAll('form[action]').forEach(form => {
+                const action = (form.action || '').trim();
+                if (!action || action === '#' || seen.has(action)) return;
+                seen.add(action);
+                results.push({ href: action, text: 'form_action' });
+            });
+
+            return results;
+        }
     """)
 
     signin_urls = []
     seen_signin = set()
-    for lnk in all_links:
+    for lnk in all_interactive:
         href = (lnk.get("href") or "").strip()
         text = (lnk.get("text") or "").lower()
         if not href or href in seen_signin:
             continue
-        if not any(tok in text for tok in LOGIN_TOKENS):
+        # Match against login tokens in text, OR match URL path against
+        # common auth keywords (catches icon-only buttons whose href
+        # contains "/login" or "/signup" even with no visible text).
+        _path_lower = urlparse(href).path.lower() if href.startswith("http") else href.lower()
+        text_matches = any(tok in text for tok in LOGIN_TOKENS)
+        url_matches  = any(
+            tok in _path_lower
+            for tok in ["login", "signin", "sign-in", "signup", "sign-up",
+                        "register", "accounts/login", "auth/"]
+        )
+        if not text_matches and not url_matches:
             continue
         if href.startswith("/"):
             href = urljoin(origin, href)
@@ -654,6 +818,16 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
             continue
         seen_signin.add(href)
         signin_urls.append(href)
+
+    # ── Fallback: try well-known auth paths if DOM discovery found nothing ──
+    if not signin_urls:
+        print("  [*] Priority scan: no login links in DOM — trying well-known auth paths ...")
+        for auth_path in COMMON_AUTH_PATHS:
+            candidate = f"{origin}{auth_path}"
+            if candidate not in seen_signin:
+                seen_signin.add(candidate)
+                signin_urls.append(candidate)
+        # We'll let _collect_policy_links_from_page handle 404s gracefully.
 
     if signin_urls:
         print(f"  [*] Priority scan: found {len(signin_urls)} sign-in page(s), scanning first ...")
@@ -674,6 +848,143 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
         print(f"  [*] Priority scan: following {len(mgmt_candidates)} management page(s) for policy links ...")
         for mgmt in mgmt_candidates[:3]:
             await _collect_policy_links_from_page(mgmt["href"], "management_followup")
+
+    return found
+
+
+async def discover_from_sitemap(page, base_url: str, primary_domain: str) -> list:
+    """
+    Parse robots.txt and sitemap.xml to discover policy URLs.
+    Handles sitemap index files (which reference sub-sitemaps) and
+    regular sitemaps.  Returns list of {"href", "text", "source"} dicts.
+    """
+    import re as _re
+    from xml.etree import ElementTree as ET
+
+    parsed = urlparse(base_url)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    found: list[dict] = []
+    seen:  set[str]    = set()
+
+    # Policy-related keywords to filter sitemap URLs
+    SITEMAP_POLICY_TOKENS = [
+        "privacy", "cookie", "cookies", "policy", "legal",
+        "terms", "tos", "gdpr", "data-protection", "data_protection",
+        "disclaimer", "compliance", "user-agreement",
+    ]
+
+    async def _fetch_text(url: str) -> str | None:
+        """Navigate to a URL and return its text content, or None on failure."""
+        try:
+            resp = await page.goto(url, wait_until="domcontentloaded", timeout=10000)
+            if resp and resp.status >= 400:
+                return None
+            return await page.content()
+        except Exception:
+            return None
+
+    async def _parse_sitemap(sitemap_url: str, depth: int = 0) -> None:
+        """Recursively parse a sitemap (or sitemap index) for policy URLs."""
+        if depth > 2:
+            return  # Prevent infinite recursion on deeply nested indices
+
+        raw = await _fetch_text(sitemap_url)
+        if not raw:
+            return
+
+        # Strip XML declaration and common HTML wrapper noise that Playwright
+        # may inject (the raw content from page.content() is full HTML).
+        # Extract the XML body from inside <body> or <pre> if present.
+        body_match = _re.search(r'<(?:body|pre)[^>]*>(.*)</(?:body|pre)>', raw, _re.DOTALL)
+        xml_text = body_match.group(1) if body_match else raw
+
+        # Some servers return the raw XML without an HTML wrapper.
+        # Attempt to find the root <urlset> or <sitemapindex> tag.
+        xml_text = xml_text.strip()
+
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError:
+            # Try stripping anything before the first '<' (e.g. BOM, whitespace)
+            first_tag = xml_text.find('<')
+            if first_tag > 0:
+                xml_text = xml_text[first_tag:]
+            try:
+                root = ET.fromstring(xml_text)
+            except ET.ParseError:
+                print(f"  [!] sitemap: could not parse XML from {sitemap_url}")
+                return
+
+        # Handle XML namespace — sitemaps use xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        ns = ''
+        ns_match = _re.match(r'\{([^}]+)\}', root.tag)
+        if ns_match:
+            ns = f'{{{ns_match.group(1)}}}'
+
+        # Sitemap index → recurse into each sub-sitemap
+        sub_sitemaps = root.findall(f'{ns}sitemap')
+        if sub_sitemaps:
+            print(f"  [*] sitemap: found sitemap index with {len(sub_sitemaps)} sub-sitemap(s)")
+            for sm in sub_sitemaps:
+                loc = sm.find(f'{ns}loc')
+                if loc is not None and loc.text:
+                    await _parse_sitemap(loc.text.strip(), depth + 1)
+            return
+
+        # Regular sitemap → extract <url><loc> entries
+        url_entries = root.findall(f'{ns}url')
+        for entry in url_entries:
+            loc = entry.find(f'{ns}loc')
+            if loc is None or not loc.text:
+                continue
+            href = loc.text.strip()
+            href_lower = href.lower()
+
+            # Only keep URLs that look policy-related
+            if not any(tok in href_lower for tok in SITEMAP_POLICY_TOKENS):
+                continue
+
+            # Trust check
+            link_domain = urlparse(href).netloc
+            if not is_trusted_domain(primary_domain, link_domain):
+                continue
+
+            if href not in seen:
+                seen.add(href)
+                found.append({"href": href, "text": "", "source": "sitemap"})
+                print(f"  [sitemap] {href[:80]}")
+
+    # ── Step 1: Discover sitemap URLs from robots.txt ─────────────────────
+    sitemap_urls: list[str] = []
+    robots_text = await _fetch_text(f"{origin}/robots.txt")
+    if robots_text:
+        # Extract text from HTML wrapper if Playwright wrapped it
+        body_match = _re.search(r'<(?:body|pre)[^>]*>(.*)</(?:body|pre)>', robots_text, _re.DOTALL)
+        plain = body_match.group(1) if body_match else robots_text
+        for line in plain.splitlines():
+            line = line.strip()
+            if line.lower().startswith("sitemap:"):
+                sm_url = line.split(":", 1)[1].strip()
+                # Re-attach the scheme if the split above ate it
+                if not sm_url.startswith("http"):
+                    # "Sitemap: https://example.com/..." → split on first ":" gives
+                    # " https://..." — but some have "Sitemap:https://..."
+                    sm_url = line[len("sitemap:"):].strip()
+                if sm_url.startswith("http"):
+                    sitemap_urls.append(sm_url)
+
+    # ── Step 2: Fall back to well-known sitemap locations ─────────────────
+    if not sitemap_urls:
+        sitemap_urls = [
+            f"{origin}/sitemap.xml",
+            f"{origin}/sitemap_index.xml",
+            f"{origin}/sitemap-index.xml",
+            f"{origin}/sitemaps.xml",
+        ]
+
+    print(f"  [*] sitemap: checking {len(sitemap_urls)} sitemap URL(s) ...")
+    for sm in sitemap_urls:
+        await _parse_sitemap(sm)
 
     return found
 
@@ -748,9 +1059,48 @@ async def scrape_policy(page, url: str, category: str, domain: str,
     Handles JS-rendered / SPA pages by scrolling and waiting for content.
     Returns a metadata dict or None on failure.
     """
+    # Auth-related URL tokens — pages with these in their path are login/
+    # signup/password-reset pages, NOT policy documents.  Used to detect
+    # auth-gate redirects and prevent saving login page content as a policy.
+    AUTH_URL_TOKENS = [
+        "/login", "/signin", "/sign-in", "/signup", "/sign-up",
+        "/register", "/accounts/login", "/accounts/signup",
+        "/auth/", "/sso/", "/oauth/", "/password/reset",
+        "/password-reset", "/forgot-password", "/account/recover",
+    ]
+
+    def _is_auth_url(check_url: str) -> bool:
+        """True if url looks like a login, signup, or password-reset page."""
+        path = urlparse(check_url).path.lower()
+        return any(tok in path for tok in AUTH_URL_TOKENS)
+
     print(f"\n  [→] Fetching [{category}]: {url}")
     try:
-        await page.goto(url, wait_until="networkidle", timeout=30000)
+        # Use domcontentloaded instead of networkidle — networkidle never
+        # fires on sites with persistent WebSockets, analytics pings, or
+        # long-polling (e.g. Overleaf, many SPAs).  The adaptive content
+        # polling loop further down handles waiting for dynamic content.
+        resp = await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+
+        # Fail fast on obvious HTTP errors (e.g., Overleaf's fake privacy policy 404)
+        if resp and not resp.ok:
+            print(f"  [✗] HTTP Error {resp.status} for {url} — skipping")
+            return None
+
+        # Brief stabilisation wait for JS frameworks to hydrate
+        try:
+            await page.wait_for_load_state("load", timeout=8000)
+        except Exception:
+            pass  # load event may never fire on some SPAs — that is fine
+
+        # ── Auth-redirect detection ────────────────────────────────────────
+        # If the site redirected us to a login/signup/password-reset page,
+        # the policy URL is auth-gated and we cannot scrape it.
+        final_url = page.url
+        if _is_auth_url(final_url) and not _is_auth_url(url):
+            print(f"  [!] Auth-gate redirect detected: {url} → {final_url} — skipping")
+            return None
+
         await dismiss_consent_banners(page)
 
         # Skeleton loader + scrollability detection: if common shimmer /
@@ -798,10 +1148,20 @@ async def scrape_policy(page, url: str, category: str, domain: str,
                 });
             }
         """)
-        await asyncio.sleep(5)
+        # Adaptive wait: poll until page content stops growing (lazy-load complete)
+        # instead of a fixed 5-second sleep.  Fast sites finish in 1-2s.
+        _prev_len = 0
+        for _ in range(10):
+            _curr_len = await page.evaluate(
+                "() => (document.body.innerText || '').length"
+            )
+            if _curr_len == _prev_len and _curr_len > 0:
+                break  # Content has stabilised
+            _prev_len = _curr_len
+            await asyncio.sleep(1)
         # Scroll back to top
         await page.evaluate("window.scrollTo(0, 0)")
-        await asyncio.sleep(1)
+        await asyncio.sleep(0.5)
 
         # Initialise raw_text — will be populated after accordion expansion below.
         raw_text = None
@@ -882,10 +1242,58 @@ async def scrape_policy(page, url: str, category: str, domain: str,
         except Exception:
             pass
 
-        # Also get HTML for structured markdown conversion
-        raw_html = await page.content()
-        soup     = BeautifulSoup(raw_html, "html.parser")
-        title    = soup.title.get_text(strip=True) if soup.title else category.replace("_", " ").title()
+        # Hash-targeted HTML extraction: if URL has an anchor (e.g. #Cookies),
+        # extract just that section's outerHTML using the browser's DOM tree.
+        hash_frag = urlparse(url).fragment
+        raw_html = ""
+        
+        if hash_frag:
+            isolated_html = await page.evaluate(f"""
+                () => {{
+                    const target = document.getElementById('{hash_frag}') || document.querySelector('[name="{hash_frag}"]');
+                    if (!target) return null;
+                    
+                    // If the target itself is a substantial container (like Overleaf's tab-panes),
+                    // no need to traverse siblings. It already wraps everything!
+                    if (target.innerText && target.innerText.length > 500) {{
+                        return target.outerHTML;
+                    }}
+                    
+                    // If it's a short anchor inside a heading, treat the parent heading as the target
+                    const tagPattern = /^H[1-6]$/i;
+                    let activeTarget = target;
+                    if (!tagPattern.test(target.tagName) && target.parentElement && tagPattern.test(target.parentElement.tagName)) {{
+                        activeTarget = target.parentElement;
+                    }}
+                    
+                    const startLevel = tagPattern.test(activeTarget.tagName) ? parseInt(activeTarget.tagName[1]) : 6;
+                    
+                    const wrapper = document.createElement('div');
+                    wrapper.appendChild(activeTarget.cloneNode(true));
+                    
+                    let current = activeTarget.nextElementSibling;
+                    while (current) {{
+                        if (tagPattern.test(current.tagName)) {{
+                            const lvl = parseInt(current.tagName[1]);
+                            if (lvl <= startLevel) break;
+                        }}
+                        wrapper.appendChild(current.cloneNode(true));
+                        current = current.nextElementSibling;
+                    }}
+                    
+                    return wrapper.innerText.length > 100 ? wrapper.outerHTML : null;
+                }}
+            """)
+            if isolated_html:
+                print(f"  [+] Isolated section #{hash_frag} ({len(isolated_html)} bytes of HTML)")
+                raw_html = isolated_html
+                
+        # If no hash or isolation failed, grab the whole page body
+        if not raw_html:
+            raw_html = await page.content()
+            
+        soup  = BeautifulSoup(raw_html, "html.parser")
+        title = soup.title.get_text(strip=True) if soup.title else category.replace("_", " ").title()
 
         # Convert HTML to structured markdown
         markdown_content = html_to_markdown(soup, base_url=url)
@@ -964,7 +1372,11 @@ async def scrape_policy(page, url: str, category: str, domain: str,
                     async def _measure_legal_density(target_url: str) -> tuple[float, str]:
                         """Return (density, url) for ranking only; no file writes."""
                         try:
-                            await page.goto(target_url, wait_until="networkidle", timeout=30000)
+                            await page.goto(target_url, wait_until="domcontentloaded", timeout=20000)
+                            try:
+                                await page.wait_for_load_state("load", timeout=5000)
+                            except Exception:
+                                pass
                             await dismiss_consent_banners(page)
                             text = await page.evaluate("""
                                 () => {
@@ -1030,6 +1442,9 @@ async def scrape_policy(page, url: str, category: str, domain: str,
                 scored_deep = []
                 for link in deep_links:
                     href = link["href"]
+                    # Reject deep links that point to auth/login pages
+                    if _is_auth_url(href):
+                        continue
                     text = (link.get("text") or "").lower()
                     base_score = score_url(href)
                     # Contextual bonus for "full", "detail", etc.
@@ -1200,6 +1615,24 @@ async def collect_policies(
                     existing_hrefs.add(link["href"])
             print(f"[*] Total unique policy links: {len(telemetry_links)}")
 
+        # ── Step 2c: Sitemap discovery (robots.txt + sitemap.xml) ──────────
+        print("[*] Checking robots.txt / sitemap.xml for policy URLs ...")
+        sitemap_links = await discover_from_sitemap(page, target_url, domain)
+        if sitemap_links:
+            existing_hrefs = {l["href"] for l in telemetry_links}
+            added = 0
+            for link in sitemap_links:
+                if link["href"] not in existing_hrefs:
+                    telemetry_links.append(link)
+                    existing_hrefs.add(link["href"])
+                    added += 1
+            if added:
+                print(f"[*] Sitemap discovery: {added} new policy link(s) added.")
+            else:
+                print("[*] Sitemap discovery: no new links (all already known).")
+        else:
+            print("[*] Sitemap discovery: no policy links found in sitemaps.")
+
         if not telemetry_links:
             print("[!] No policy links found. Exiting.")
             await browser.close()
@@ -1217,6 +1650,36 @@ async def collect_policies(
             "terms_and_conditions":  ["/legal/terms", "/terms", "/tos",
                                       "/legal/user-agreement", "/policies/terms"],
             "data_retention_policy": ["/data-retention", "/legal/data-retention"],
+        }
+
+        # Ecosystem-specific WELLKNOWN URLs — major platforms host policies on
+        # separate domains (e.g., Meta hosts cookies policy on privacycenter.
+        # instagram.com).  Keyed by root domain → {category → [full urls]}.
+        ECOSYSTEM_WELLKNOWN_URLS = {
+            "instagram.com": {
+                "cookie_policy": [
+                    "https://privacycenter.instagram.com/policies/cookies/",
+                    "https://www.facebook.com/policies/cookies/",
+                ],
+                "privacy_policy": [
+                    "https://privacycenter.instagram.com/policy",
+                ],
+            },
+            "facebook.com": {
+                "cookie_policy": [
+                    "https://www.facebook.com/policies/cookies/",
+                    "https://www.facebook.com/help/cookies",
+                ],
+                "privacy_policy": [
+                    "https://www.facebook.com/privacy/policy/",
+                    "https://www.facebook.com/privacy/center/",
+                ],
+            },
+            "whatsapp.com": {
+                "cookie_policy": [
+                    "https://www.whatsapp.com/legal/cookies",
+                ],
+            },
         }
 
         base_origin = f"{parsed.scheme}://{parsed.netloc}"
@@ -1240,11 +1703,12 @@ async def collect_policies(
             # its cookie policy link inside the GDPR consent dialog
             if link.get("source") == "consent_popup":
                 url_score += 200
-            # +100 boost when URL path contains the exact category keyword
-            _path_lower = urlparse(href).path.lower()
-            if category == "cookie_policy" and "/cookie" in _path_lower:
+            # +100 boost when URL path or fragment contains the exact category keyword
+            _parsed = urlparse(href)
+            _path_frag_lower = (_parsed.path + "#" + _parsed.fragment).lower()
+            if category == "cookie_policy" and ("cookie" in _path_frag_lower):
                 url_score += 100
-            if category == "privacy_policy" and "/privacy" in _path_lower:
+            if category == "privacy_policy" and ("privacy" in _path_frag_lower):
                 url_score += 100
             # Avoid obvious "about us" / meta-products marketing pages
             combined_lt = (href + " " + text).lower()
@@ -1270,6 +1734,22 @@ async def collect_policies(
                     "text": "",
                     "score": score_url(fallback_url) - 1,
                     "source": "wellknown",
+                })
+
+        # Add ecosystem-specific full URLs (e.g., privacycenter.instagram.com
+        # for Meta properties) — these are highly authoritative.
+        domain_root = get_root_domain(domain)
+        eco_urls = ECOSYSTEM_WELLKNOWN_URLS.get(domain_root, {})
+        for eco_category, eco_full_urls in eco_urls.items():
+            if eco_category not in candidates:
+                candidates[eco_category] = []
+            for eco_url in eco_full_urls:
+                # +150 because ecosystem URLs are the real policy pages
+                candidates[eco_category].append({
+                    "href": eco_url,
+                    "text": "",
+                    "score": score_url(eco_url) + 150,
+                    "source": "ecosystem_wellknown",
                 })
 
         # Ensure every candidate has a 'source' field
@@ -1352,14 +1832,21 @@ async def collect_policies(
         print(f"\n[*] Scraping {len(categorised)} policy document(s) (privacy + cookie only) ...\n")
 
         # ── Step 4: Scrape each policy page ───────────────────────────────────
+        # Each scrape uses a fresh page to avoid cookie / local-storage bleed
+        # between navigations (e.g. a consent dialog dismissed on homepage
+        # would not reappear on the policy page with a shared page object).
         results: list[dict] = []
         scraped_by_category: Dict[str, str] = {}
         for category, link in categorised.items():
             is_priority = link.get("source", "").startswith("priority")
-            result = await scrape_policy(
-                page, link["href"], category, domain, output_path,
-                _from_priority=is_priority,
-            )
+            scrape_page = await context.new_page()
+            try:
+                result = await scrape_policy(
+                    scrape_page, link["href"], category, domain, output_path,
+                    _from_priority=is_priority,
+                )
+            finally:
+                await scrape_page.close()
             if result:
                 results.append(result)
                 try:
