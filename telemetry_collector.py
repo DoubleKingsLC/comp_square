@@ -37,6 +37,10 @@ MULTI_TLDS = {
     "co.au", "com.au", "net.au", "org.au",
     "co.nz", "com.nz", "co.za", "com.br",
     "co.jp", "ne.jp", "or.jp", "ac.jp",
+    # private public-suffix registries (kept in sync with har_extractor.py)
+    "eu.com", "us.com", "uk.com", "de.com", "gb.com", "cn.com",
+    "jpn.com", "za.com", "br.com", "sa.com", "se.com", "ru.com",
+    "uk.net", "gb.net", "se.net",
 }
 
 def get_etld1(hostname: str) -> str:

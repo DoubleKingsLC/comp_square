@@ -1,0 +1,74 @@
+{
+  "domain": "www.independent.ie",
+  "scan_date": "2026-07-12T21:59:34.635296+00:00",
+  "model": "gpt-4o-mini",
+  "regulations_filter": [
+    "GDPR",
+    "PECR"
+  ],
+  "har_file": "telemetry_output/www.independent.ie_20260712_190016.har",
+  "policies": [
+    "policy_documents/www.mediahuis.ie_cookie_policy.md"
+  ],
+  "disclaimer": "Automated research output. All findings are POTENTIAL violations and do not constitute legal advice.",
+  "overall_score": 10,
+  "overall_verdict": "POTENTIAL_NON_COMPLIANCE",
+  "dimensions_scored": 3,
+  "dimensions_not_addressed": 0,
+  "dimensions": [
+    {
+      "dimension": "pre_consent_tracking",
+      "score": 0,
+      "verdict": "FAIL",
+      "confidence": 1.0,
+      "breach": {
+        "regulation": "PECR",
+        "article": "6(1)",
+        "requirement_text": "the subscriber or user\u2026 gives consent to the storage or access."
+      },
+      "policy_claim": null,
+      "policy_section": null,
+      "behavioral_evidence": "No consent interaction detected during the scan.",
+      "discrepancy_type": "neglect",
+      "explanation": "The site did not provide any means for the user to give consent before installing profiling/tracking cookies, which is a clear violation of PECR Regulation 6(1). The observed behavior indicates tracking cookies were installed without user interaction or consent.",
+      "recommendation": "Implement a consent management platform that provides users with clear options to accept or reject tracking cookies prior to their installation.",
+      "severity": "critical"
+    },
+    {
+      "dimension": "tracking_without_consent",
+      "score": 10,
+      "verdict": "FAIL",
+      "confidence": 0.9,
+      "breach": {
+        "regulation": "PECR",
+        "article": "6",
+        "requirement_text": "a person must not store information, or gain access to information stored, in the terminal equipment of a subscriber or user."
+      },
+      "policy_claim": null,
+      "policy_section": null,
+      "behavioral_evidence": "Tracker requests to multiple third-party domains were made without prior consent.",
+      "discrepancy_type": "neglect",
+      "explanation": "The site did not provide clear consent mechanisms before firing multiple tracker requests, thereby not complying with the requirements outlined in PECR Article 6. The observed behavior shows that tracking began before any user consent was obtained.",
+      "recommendation": "Implement a proper consent management framework that ensures tracking does not occur until explicit user consent is granted.",
+      "severity": "critical"
+    },
+    {
+      "dimension": "disclosure_of_third_parties",
+      "score": 25,
+      "verdict": "PARTIAL",
+      "confidence": 0.7,
+      "breach": {
+        "regulation": "GDPR",
+        "article": "13(1)(e)",
+        "requirement_text": null
+      },
+      "policy_claim": "We may partner with or receive services from third parties which you can visit from our Site.",
+      "policy_section": "About this Cookie Policy",
+      "behavioral_evidence": "Detected tracker domains include multiple third parties.",
+      "discrepancy_type": null,
+      "explanation": "The policy mentions that third parties may provide services but does not specifically disclose which third parties actually receive data. Runtime behavior shows that numerous third-party domains are detected on the site but are not named in the policy, leading to a potential violation.",
+      "recommendation": "The site should disclose specific third-party recipients of user data in the policy.",
+      "severity": "high"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "domain": "www.independent.ie",
+  "scan_date": "2026-07-13T21:10:05.359954+00:00",
+  "model": "gpt-4o-mini",
+  "regulations_filter": [
+    "GDPR",
+    "PECR"
+  ],
+  "har_file": "telemetry_output/www.independent.ie_20260712_190016.har",
+  "policies": [
+    "policy_documents/www.mediahuis.ie_cookie_policy.md"
+  ],
+  "disclaimer": "Automated research output. All findings are POTENTIAL violations and do not constitute legal advice.",
+  "overall_score": 26,
+  "overall_verdict": "POTENTIAL_NON_COMPLIANCE",
+  "dimensions_scored": 3,
+  "dimensions_not_addressed": 0,
+  "dimensions": [
+    {
+      "dimension": "pre_consent_tracking",
+      "score": 50,
+      "verdict": "PARTIAL",
+      "confidence": 0.8,
+      "breach": {
+        "regulation": "PECR",
+        "article": "6(1)",
+        "requirement_text": "gives consent to the storage or access."
+      },
+      "policy_claim": "we work hard to protect your information and put you in control.",
+      "policy_section": "Overview",
+      "behavioral_evidence": null,
+      "discrepancy_type": null,
+      "explanation": "The policy states that users have control over their data, yet there is no clarity regarding whether tracking cookies are stored or accessed before consent. While no violations were observed during the audit, the policy does not explicitly affirm that consent is obtained prior to any tracking activities.",
+      "recommendation": "Clarify and explicitly state in the policy that tracking cookies will not be set until user consent is obtained.",
+      "severity": "critical"
+    },
+    {
+      "dimension": "tracking_without_consent",
+      "score": 18,
+      "verdict": "FAIL",
+      "confidence": 0.9,
+      "breach": {
+        "regulation": "PECR",
+        "article": "6(1)",
+        "requirement_text": "a person must not store information, or gain access to information stored, in the terminal equipment of a subscriber or user."
+      },
+      "policy_claim": "We may place our cookies and trackers on your device via our website and apps.",
+      "policy_section": "Types of Cookies",
+      "behavioral_evidence": "Tracker requests made to multiple third-party domains without consent.",
+      "discrepancy_type": "contrary",
+      "explanation": "The observed behavior indicates that multiple tracker requests were made to third-party domains without prior user consent. This directly contradicts the legal requirement under PECR not to store or gain access to information in a user's terminal equipment without consent.",
+      "recommendation": "Implement a robust consent management system to ensure that all third-party tracking practices obtain user consent before activation.",
+      "severity": "critical"
+    },
+    {
+      "dimension": "disclosure_of_third_parties",
+      "score": 0,
+      "verdict": "FAIL",
+      "confidence": 0.9,
+      "breach": {
+        "regulation": "GDPR",
+        "article": "Article 19",
+        "requirement_text": "the controller shall communicate any rectification or erasure of personal data or restriction of processing carried out in accordance with Article 16, Article 17(1) and Article 18 to each recipient to whom the personal data have been disclosed"
+      },
+      "policy_claim": "We may partner with or receive services from third parties which you can visit from our Site.",
+      "policy_section": "About this Cookie Policy",
+      "behavioral_evidence": "third_party_domains (15): agnoplay.com, aswpsdkus.com, cloudflare.com, cxense.com, doubleclick.net, google-analytics.com, googlesyndication.com, googletagmanager.com, jsdelivr.net, kaching.eu.com, mediahuisgroup.com, mhtr.be, ... and 3 more",
+      "discrepancy_type": "contrary",
+      "explanation": "The policy states that they may partner with third parties but does not explicitly disclose the actual third parties involved or how personal data is shared with them. Observed behavior shows numerous third-party domains receiving data, which contradicts the transparency expected under GDPR.",
+      "recommendation": "Update the cookie policy to explicitly list all third parties that receive data and explain the nature of the data shared with each.",
+      "severity": "high"
+    }
+  ]
+}

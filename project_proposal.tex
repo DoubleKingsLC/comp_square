@@ -1,0 +1,339 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{url}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage{fancyhdr}
+\usepackage{times}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc}
+
+\geometry{margin=1in}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Jean: LLM-Driven RAG Compliance Pipeline}
+\lhead{Capstone Project Proposal and Literature Review}
+\cfoot{\thepage}
+
+\title{LLM-Driven RAG Compliance Pipeline for Automated Privacy Auditing: Capstone Project Proposal and Literature Review}
+
+\author{Aaron Joseph Jean \\ Student ID: 25233118 \\ Department of Computer Science and Engineering \\ Email: aaronjjean@gmail.com}
+
+\date{June 15, 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Modern privacy regulations, such as the General Data Protection Regulation (GDPR) and the California Consumer Privacy Act (CCPA), mandate strict rules regarding user consent, data collection, and tracking disclosure. However, verifying whether a website's actual technical behavior matches the claims in its written privacy and cookie policies remains a manual, error-prone, and unscalable task. This project proposes a hybrid, automated auditing framework that uses Retrieval-Augmented Generation (RAG) and Large Language Models (LLMs) to verify compliance. The framework ingests static legal regulations into a local vector database using a legal-specific embedding model. At runtime, it collects dynamic behavioral telemetry (HTTP Archive (HAR) logs and DOM events) from target websites using headless browser automation and extracts the site's privacy policies. An LLM-based compliance scorer then cross-references the behavioral evidence and policy claims against retrieved legal articles to score compliance across multiple dimensions, generate citations, and compile actionable recommendations. A literature review of ten foundational papers demonstrates the research gap: existing systems audit policies or traffic in isolation, or rely on static program analysis of mobile apps, leaving dynamic web-based compliance underexplored.
+\end{abstract}
+
+\noindent \textbf{Index Terms:} Privacy Compliance, Natural Language Processing, Large Language Models, Retrieval-Augmented Generation, Headless Browser Automation, Cookie Auditing, Telemetry.
+
+\vspace{12pt}
+
+\section{Introduction}
+With the rise of data privacy laws worldwide, including the European Union's General Data Protection Regulation (GDPR) and India's Digital Personal Data Protection Act (DPDP), digital transparency has shifted from an ethical preference to a legal mandate. Under these frameworks, organizations are legally required to provide users with clear, detailed, and accurate disclosures regarding data collection, processing purposes, and tracking technologies. Furthermore, regulations like the UK's Privacy and Electronic Communications Regulations (PECR) require explicit user consent before any non-essential tracking technologies (e.g., cookies or device fingerprinting) are initiated.
+
+Despite these legal frameworks, compliance in the real world is highly fragmented. Many organizations use template-based privacy policies that do not accurately represent their actual technical practices. Conversely, dynamic third-party scripts and marketing pixels are often added to websites without the consent or knowledge of the primary site administrator, leading to silent data leaks and compliance violations.
+
+Currently, compliance auditing is performed manually by legal experts and security auditors who inspect website code, examine cookie consent popups, monitor network requests, and read legal documents line by line. This approach is slow, expensive, and unscalable. While automated tools have been developed to detect trackers or parse privacy policies, they typically operate in silos. Systems either analyze the policy text using Natural Language Processing (NLP) to evaluate readability and completeness, or they inspect network traffic to identify tracking scripts, without cross-referencing the two. The few systems that attempt hybrid auditing are limited to mobile app stores and rely on static program analysis, which is prone to false positives due to unused libraries and cannot address the runtime complexities of web-based cookie consent banners.
+
+To address these limitations, this project proposes an **LLM-Driven Retrieval-Augmented Generation (RAG) Compliance Pipeline**. The pipeline dynamically collects website policy texts and runtime behavioral telemetry (network requests, cookies, console logs, and fingerprinting alerts) and uses an LLM to evaluate them against the ground truth of legal regulations retrieved from a vector database. This hybrid auditing approach bridges the gap between written privacy disclosures ("notice") and actual software execution ("practice"), providing a scalable solution for automated legal auditing.
+
+\section{Methodology for Paper Selection}
+To build a solid academic foundation for this capstone project, a systematic literature search was conducted to identify and analyze ten relevant peer-reviewed papers. The selection methodology was designed to trace the evolution of the field from early statistical NLP models to modern LLMs, and from static program analysis to dynamic network monitoring.
+
+\subsection{Search Databases}
+The following academic search databases were utilized:
+\begin{itemize}
+    \item \textbf{IEEE Xplore Digital Library} (for security, privacy, and compliance frameworks).
+    \item \textbf{ACM Digital Library} (for core natural language processing and web systems research).
+    \item \textbf{USENIX Association} (for systems security and empirical privacy auditing papers).
+    \item \textbf{Google Scholar} (for broad cross-disciplinary literature search and tracking citations).
+\end{itemize}
+
+\subsection{Keywords and Search Queries}
+The search was performed using combinations of the following keywords:
+\begin{itemize}
+    \item \textit{"automated privacy policy compliance"}
+    \item \textit{"privacy policy consistency checking"}
+    \item \textit{"cookie consent auditing GDPR PECR"}
+    \item \textit{"deep learning privacy policy NLP"}
+    \item \textit{"mobile app privacy label inconsistency"}
+    \item \textit{"LLM legal compliance evaluation"}
+\end{itemize}
+
+\subsection{Selection Criteria}
+To ensure the papers selected were directly relevant and of high quality, the following inclusion criteria were applied:
+\begin{enumerate}
+    \item The paper must be published in a reputable peer-reviewed conference (e.g., USENIX Security, IEEE S\&P, ACM CCS, NDSS, ACL, EMNLP) or journal.
+    \item The research must present an automated or semi-automated methodology (either code analysis, text classification, or hybrid auditing).
+    \item The study must address privacy policies, cookie consent compliance, or data privacy regulation enforcement.
+    \item The selected set of papers must collectively cover both the textual analysis of legal documents and the technical analysis of software behavior.
+\end{enumerate}
+Using this methodology, ten papers were selected and categorized for in-depth comparative review.
+
+\section{Literature Review}
+The selected literature can be divided into three core categories: (A) NLP and Machine Learning on Privacy Text, (B) Static and Dynamic Software Auditing, and (C) Automated Compliance Verification and Large Language Models.
+
+\subsection{NLP and Machine Learning on Privacy Text}
+Analyzing unstructured legal text is a primary hurdle in automated compliance checking. Wilson et al.~\cite{wilson-2016-opp115} established the foundational benchmark for this research by creating the **OPP-115 Dataset**. They manually annotated 115 privacy policies with 23,000 fine-grained data practices across 10 categories, demonstrating that statistical classifiers (such as Support Vector Machines) could automate the categorization of privacy policies. However, their models did not perform deep semantic analysis and were limited to simple keyword associations.
+
+Harkous et al.~\cite{harkous-2018-polisis} advanced this field by introducing **Polisis**, a deep learning framework that trained a custom Word2Vec embedding model on over 130,000 privacy policies. Polisis used convolutional neural networks (CNNs) to classify policy segments with 88.4\% accuracy and powered *PriBot*, an automated question-answering system. While Polisis enabled scalable text classification, it relied entirely on the written policy text and had no mechanism to verify whether the website actually followed the stated practices.
+
+To improve QA systems, Ravichander et al.~\cite{ravichander-2019-privacyqa} created the **PrivacyQA** dataset, comprising 1,750 user questions and over 3,500 expert answers on mobile application policies. They established that fine-tuned BERT models could extract relevant answer spans but noted a 30\% F1-score gap between automated models and human legal experts, highlighting the limitations of early transformer architectures in reasoning over complex legal terminology.
+
+\subsection{Static and Dynamic Software Auditing}
+To check whether privacy policies are honest, researchers have developed tools to analyze software behavior directly. Zimmeck et al.~\cite{zimmeck-2017-mobileapps} proposed a pioneer hybrid system for Android applications. They combined SVM-based privacy policy text classification with static analysis of Android bytecode (tracking API calls and source-to-sink data flows), automatically analysing privacy requirements at scale and discovering that a significant percentage of apps collected sensitive identifiers (e.g., location or contact lists) without disclosing it in their policy.
+
+Xiao et al.~\cite{xiao-2023-lalaine} introduced **Lalaine**, which measures and characterises non-compliance of the privacy labels mandated by the Apple App Store. By comparing the data flows actually observed from iOS apps against the labels developers declare, Lalaine revealed widespread inconsistencies between disclosed and observed behaviour. While both Zimmeck et al. and Lalaine demonstrated the utility of behaviour-versus-disclosure auditing, such mobile analysis cannot capture dynamic web behaviors such as cookie setting and JavaScript-based tracking, and static approaches additionally suffer from false positives due to dead code (code present in libraries but never executed).
+
+Zimmeck et al. later scaled their static compliance check in the **MAPS** project~\cite{zimmeck-2019-maps}, auditing over one million Google Play apps. While MAPS successfully identified widespread omissions and violations, its architecture was designed specifically for Android compiled binaries. It could not address the dynamic, event-driven architecture of web applications, where tracking behavior changes depending on user interactions with consent banners.
+
+Dynamic auditing of web-based tracking was addressed by Bouhoula et al.~\cite{bouhoula-2024-cookies} and Trevisan et al.~\cite{trevisan-2019-cookielaw}. Bouhoula et al. performed the first general, automated, large-scale analysis of cookie-notice compliance, using browser instrumentation to detect violations such as tracking cookies set *before* the user gives consent (pre-consent tracking), while correcting the selection bias of earlier studies that focused on specific consent-management platforms. Similarly, Trevisan et al. performed a longitudinal study of EU cookie-law compliance, analyzing the presence of pre-consent tracking over four years. While both studies provided valuable empirical evidence of widespread compliance failures, they focused exclusively on network and consent behaviour and did not analyze or cross-reference the text of the websites' written privacy policies.
+
+\subsection{Automated Compliance Verification and LLMs}
+The third wave of research focuses on mapping policy content directly to formal legal frameworks and leveraging generative AI. Xie et al.~\cite{xie-2025-llmpolicy} evaluated privacy policies under modern privacy laws at scale using an LLM-based automated approach. They systematised 34 distinct privacy-practice clauses drawn from ten privacy laws and applied an LLM pipeline to policies collected from over 100,000 websites, finding that automated assessment of policy text against codified law is feasible but that natural-language ambiguity still complicates substantive verification.
+
+Finally, Guha et al.~\cite{guha-2023-legalbench} introduced **LegalBench**, a collaboratively built benchmark of 162 legal-reasoning tasks, and used it to evaluate 20 open-source and commercial Large Language Models (LLMs). They demonstrated that modern LLMs possess a strong capability to interpret complex legal clauses compared to traditional classifiers. However, their study evaluated LLMs on clean, isolated text in isolation and did not propose an integration framework to ingest raw software telemetry (such as network HAR logs) alongside policy text.
+
+\section{Comparative Analysis}
+As shown in Table~\ref{tab:comparison}, the selected papers represent a breadth of methodologies across three distinct research waves. The table provides a detailed comparison of each paper's methodology, dataset, evaluation metrics, strengths, and limitations, enabling a systematic assessment of the current state of the field.
+
+\begin{table*}[h]
+\caption{Comparative Analysis of Foundational Research Papers}
+\label{tab:comparison}
+\centering
+\begin{tabular}{p{2.3cm}p{2.3cm}p{2.2cm}p{2.3cm}p{3cm}p{3.2cm}}
+\hline
+\textbf{Paper} & \textbf{Methodology} & \textbf{Dataset} & \textbf{Eval. Metrics} & \textbf{Strengths} & \textbf{Limitations} \\
+\hline
+Wilson et al.~\cite{wilson-2016-opp115} & Manual annotation \& SVM classification & OPP-115 (115 privacy policies) & Precision, Recall, F1-score & Established first annotated corpus for privacy NLP. & Small dataset; weak semantic reasoning of SVMs. \\
+\hline
+Harkous et al.~\cite{harkous-2018-polisis} & CNNs \& Word2Vec representations & 130k privacy policies & Classification accuracy (88.4\%) & Scalable categorization; interactive QA assistant. & Purely text-based; cannot verify actual site behavior. \\
+\hline
+Zimmeck et al.~\cite{zimmeck-2017-mobileapps} & Static taint analysis \& SVM classification & 17,991 Android apps & Detection rate of inconsistencies & First hybrid approach matching code to policy. & High false positives from dead code; mobile only. \\
+\hline
+Ravichander et al.~\cite{ravichander-2019-privacyqa} & Fine-tuned BERT QA span extraction & PrivacyQA (1,750 questions) & QA F1-score (baseline gap: 0.3) & Highlighted challenges of legal QA for transformers. & Restricted to short extractive spans; no text generation. \\
+\hline
+Zimmeck et al. (MAPS)~\cite{zimmeck-2019-maps} & NLP extraction \& static binary analysis & 1M+ Google Play apps & Inconsistency rate per app & Massive empirical study showing scale of violations. & Mobile specific; cannot evaluate dynamic web consent. \\
+\hline
+Xiao et al. (Lalaine)~\cite{xiao-2023-lalaine} & Dynamic analysis of iOS app data flows & iOS apps \& Apple privacy labels & Label vs.\ behaviour non-compliance & Verifies app-store privacy labels against observed flows. & Mobile/iOS labels only; not web telemetry. \\
+\hline
+Xie et al.~\cite{xie-2025-llmpolicy} & LLM-based policy evaluation at scale & 100k+ website policies; 10 laws & Clause-level compliance assessment & LLM assessment of 34 clauses across modern laws. & Policy text only; no runtime behaviour. \\
+\hline
+Bouhoula et al.~\cite{bouhoula-2024-cookies} & Automated browser crawl \& consent analysis & Large-scale web crawl & Cookie-notice compliance violations & General, unbiased large-scale consent auditing. & Network/consent only; ignores policy text. \\
+\hline
+Trevisan et al.~\cite{trevisan-2019-cookielaw} & Dynamic web crawl \& heuristic matching & Millions of tracking flows & Tracking cookie percentage & Long-term empirical analysis of EU cookie law. & No NLP/LLM analysis; cannot detect written contradictions. \\
+\hline
+Guha et al. (LegalBench)~\cite{guha-2023-legalbench} & LLM benchmark \& zero/few-shot evaluation & LegalBench (162 tasks, 20 LLMs) & Accuracy on legal reasoning tasks & Proves LLMs can analyze complex legal reasoning. & Evaluates isolated text; no integration with web telemetry. \\
+\hline
+\end{tabular}
+\end{table*}
+
+\section{Synthesis and Research Gap}
+Reading across the reviewed work, the literature collectively establishes three findings: (i) written privacy policies are often incomplete, ambiguous, and fail to disclose active tracking behaviors, especially third-party scripts~\cite{wilson-2016-opp115,harkous-2018-polisis,ravichander-2019-privacyqa}; (ii) dynamic cookie consent mechanisms on the web frequently fail to block tracking cookies before obtaining user consent, constituting major GDPR/PECR violations~\cite{trevisan-2019-cookielaw,bouhoula-2024-cookies}; and (iii) modern LLMs can interpret legal documents and classify compliance violations with high accuracy, but only on clean text in isolation~\cite{guha-2023-legalbench,xie-2025-llmpolicy}.
+
+Taken together, these findings expose a clear research gap. Most existing systems either analyze the written policy text in isolation (NLP/LLM only) or analyze the software/web behavior in isolation (dynamic crawls), and the few hybrid systems that attempt to match policies to behavior (such as MAPS or Zimmeck et al.) are limited to static analysis of compiled mobile app binaries~\cite{zimmeck-2017-mobileapps,zimmeck-2019-maps,xiao-2023-lalaine}. There is currently \textbf{no unified, automated auditing framework that ingests runtime web behavioral evidence (such as network HAR logs and JavaScript event telemetry), retrieves relevant legal standards, and cross-references them in full with scraped policy texts using LLM-driven RAG reasoning to detect real-world non-compliance and contradictions.} This capstone project directly addresses this gap.
+
+\section{Proposed Approach and Methodology}
+To address the research gap, this project implements a local, privacy-preserving, and automated compliance pipeline that connects legal ground truth, written notice, and software execution.
+
+\subsection{Architecture Overview}
+The system architecture consists of three phases: (1) pre-loaded legal ingestion, (2) runtime telemetry and policy collection, and (3) RAG-based LLM evaluation. Figure~\ref{fig:architecture} shows how data from all three sources converges for compliance scoring.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw, rounded corners, minimum width=2.3cm, minimum height=0.8cm,
+              align=center, fill=white},
+  scorer/.style={draw, thick, rounded corners, minimum width=2.6cm, minimum height=1.5cm,
+              align=center, fill=black!6},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  elabel/.style={font=\scriptsize, inner sep=1.5pt, fill=white},
+  ilabel/.style={font=\scriptsize\itshape, gray!60!black, align=center}
+]
+
+% ===== Zone 1: Pre-loaded (left column) =====
+\node[box] (legal) {Legal Docs};
+\node[box, below=0.65cm of legal] (bert) {BERT Embed};
+\node[box, below=0.65cm of bert] (chroma) {ChromaDB};
+\draw[arr] (legal) -- (bert);
+\draw[arr] (bert) -- (chroma);
+\node[ilabel, right=0.15cm of legal] {GDPR, DPDP, CCPA,\\PECR, HIPAA};
+
+% ===== Zone 2: Runtime (middle column) =====
+\node[box, right=3.2cm of legal] (play) {Playwright};
+\node[box, below=0.65cm of play] (tele) {Telemetry};
+\node[box, below=0.65cm of tele] (policy) {Policy Extract};
+\draw[arr] (play) -- (tele);
+\draw[arr] (tele) -- (policy);
+\node[ilabel, right=0.15cm of play] {Website\\navigation};
+
+% ===== Zone 3: Evaluation (right) =====
+\node[scorer, right=3.4cm of tele] (rag) {RAG LLM\\Scorer};
+\node[box, below=1.0cm of rag] (report) {Report Gen};
+\node[box, below=0.65cm of report] (json) {JSON Output};
+\draw[arr] (rag) -- (report);
+\draw[arr] (report) -- (json);
+\node[ilabel, right=0.15cm of json] {Scores, citations,\\recommendations};
+
+% ===== Convergence arrows into the scorer =====
+\draw[arr] (tele.east) -- node[elabel, above] {HAR / telemetry} (rag.west);
+\draw[arr] (policy.east) -- node[elabel, below, pos=0.45] {Policy claims} (rag.west);
+% ChromaDB routed below the middle column to avoid crossing boxes
+\draw[arr] (chroma.south) |- ($(policy.south)+(0,-0.55cm)$)
+           node[elabel, below, pos=0.25] {Legal articles} -| (rag.south);
+
+% ===== Zone background panels + headers =====
+\begin{scope}[on background layer]
+  \node[draw, dashed, rounded corners, fill=black!3, inner sep=0.28cm,
+        fit=(legal)(chroma)] (z1) {};
+  \node[draw, dashed, rounded corners, fill=black!3, inner sep=0.28cm,
+        fit=(play)(policy)] (z2) {};
+  \node[draw, dashed, rounded corners, fill=black!3, inner sep=0.30cm,
+        fit=(rag)(json)] (z3) {};
+\end{scope}
+\node[font=\bfseries\scriptsize, above=1pt of z1] {ZONE 1: Pre-loaded};
+\node[font=\bfseries\scriptsize, above=1pt of z2] {ZONE 2: Runtime};
+\node[font=\bfseries\scriptsize, above=1pt of z3] {ZONE 3: Evaluation};
+
+\end{tikzpicture}
+\caption{System architecture with three phases: (1) Pre-loaded legal document ingestion into ChromaDB, (2) Runtime telemetry and policy collection, and (3) RAG-based LLM compliance evaluation that integrates legal knowledge (legal articles), telemetry evidence (HAR logs), and extracted policy claims to produce compliance scores and recommendations.}
+\label{fig:architecture}
+\end{figure}
+
+\begin{enumerate}
+    \item \textbf{Legal Document Ingestion (Pre-loaded):} Ground truth compliance regulations (GDPR, DPDP, CCPA, PECR, HIPAA) are loaded once, parsed, and chunked by legal units (Articles and Sections) to preserve semantic coherence. These chunks are embedded using a legal-specific model (\textsl{nlpaueb/legal-bert-base-uncased}) and saved in a local, persistent vector database (\textbf{ChromaDB}).
+    \item \textbf{Dynamic Telemetry Collection (Runtime):} For any target website, a headless browser agent powered by \textbf{Playwright} simulates user navigation. It records all outbound network requests as a HTTP Archive (\textbf{HAR}) file and logs JavaScript DOM interactions (like cookie consent banner clicks and canvas fingerprinting) into a \textsl{telemetry.json} file.
+    \item \textbf{Policy Extraction (Runtime):} The browser agent identifies, crawls, and extracts the target website's written Privacy Policy and Cookie Policy, converting them into structured Markdown files.
+    \item \textbf{RAG Compliance Evaluation (Runtime):} The orchestrator evaluates compliance across 14 distinct dimensions (including pre-consent tracking, third-party data transfers, and data minimisation). For each dimension:
+    \begin{itemize}
+        \item The vector database is queried to retrieve the relevant legal articles.
+        \item The scraped policy markdown is read to extract the website's claims.
+        \item The HAR/Telemetry logs are parsed to extract the technical evidence.
+        \item A local LLM (e.g., Llama 3.3 via Ollama) or a public API is prompted with the combined context (Law + Policy + Behavior) to evaluate compliance, output a score (0--100), identify breaches, cite the exact law article, and recommend specific fixes.
+    \end{itemize}
+    \item \textbf{Aggregated Report Generation:} A final compliance report is aggregated, calculating a weighted score based on the severity of the dimensions, and exported as a structured JSON file.
+\end{enumerate}
+
+\subsection{Key Innovations}
+\begin{itemize}
+    \item \textbf{Notice-to-Practice Verification:} It does not just check if a policy is well-written; it cross-references the text with actual network traffic (HAR logs) to find discrepancies (e.g., policy claims "no marketing cookies," but HAR shows a Facebook tracking pixel set on page load).
+    \item \textbf{Legal-BERT Embeddings:} Using a model fine-tuned on legal text ensures that terms like "shall," "must," "controller," and "data subject" are embedded with appropriate legal semantics, improving vector database retrieval.
+    \item \textbf{Stealth Instrumentation:} The Playwright client implements anti-fingerprinting evasion scripts to bypass bot detection on complex sites like Facebook and Instagram, enabling the collection of real policies.
+\end{itemize}
+
+\section{Datasets}
+The project utilizes two distinct dataset categories:
+\begin{enumerate}
+    \item \textbf{Compliance Regulations Dataset (Static):} Text and PDF versions of major privacy laws:
+    \begin{itemize}
+        \item General Data Protection Regulation (GDPR) --- EU
+        \item Digital Personal Data Protection Act (DPDP) --- India
+        \item California Consumer Privacy Act (CCPA) --- USA
+        \item Privacy and Electronic Communications Regulations (PECR) --- UK
+    \end{itemize}
+    \item \textbf{Website Telemetry Dataset (Dynamic):} Collected dynamically per scan. It includes:
+    \begin{itemize}
+        \item Scraped Markdown policies from target domains (e.g., \textsl{www.facebook.com}, \textsl{www.overleaf.com}).
+        \item HAR logs capturing runtime HTTP network requests, headers, and set-cookie actions.
+        \item Telemetry JSON logs capturing JavaScript execution alerts, canvas fingerprinting calls, and security headers (CSP, HSTS).
+    \end{itemize}
+\end{enumerate}
+
+\section{Project Plan and Milestones}
+The capstone project is scheduled over a 16-week timeline, divided into five core milestones. Figure~\ref{fig:gantt} provides a visual Gantt chart showing the project schedule and task dependencies.
+
+\subsection{Project Schedule Overview}
+\begin{itemize}
+    \item \textbf{Weeks 1--3: Research \& Setup (Milestone 1)}
+    \begin{itemize}
+        \item Literature review consolidation and setting up the local virtual environment.
+        \item Downloading and preprocessing the static compliance regulation texts.
+    \end{itemize}
+    \item \textbf{Weeks 4--6: Legal Ingestion Pipeline (Milestone 2)}
+    \begin{itemize}
+        \item Implementing legal document parsing and chunking.
+        \item Setting up ChromaDB and legal-BERT embeddings.
+    \end{itemize}
+    \item \textbf{Weeks 7--9: Telemetry \& Crawler (Milestone 3)}
+    \begin{itemize}
+        \item Developing Playwright-based browser automation.
+        \item Implementing HAR and telemetry JSON logging.
+    \end{itemize}
+    \item \textbf{Weeks 10--12: Scorer \& RAG Integration (Milestone 4)}
+    \begin{itemize}
+        \item Integrating RAG with LLM backend.
+        \item Developing the 14-dimension compliance scorer.
+    \end{itemize}
+    \item \textbf{Weeks 13--15: Reporting, Evaluation, \& Writing (Milestone 5)}
+    \begin{itemize}
+        \item Final testing and integration.
+        \item Writing project documentation and final report.
+    \end{itemize}
+    \item \textbf{Week 16: Submission and Presentation}
+\end{itemize}
+
+\subsection{Gantt Chart}
+\begin{figure}[h]
+\centering
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Phase} & \textbf{Weeks} & \textbf{Duration} & \textbf{Key Deliverables} \\
+\hline
+M1: Research \& Setup & 1--3 & 3 & Lit. review finalized, environment configured \\
+\hline
+M2: Legal Ingestion Pipeline & 4--6 & 3 & Document parsing, ChromaDB setup, BERT embeddings \\
+\hline
+M3: Telemetry \& Crawler & 7--9 & 3 & Playwright automation, HAR collection, policy extraction \\
+\hline
+M4: Scorer \& RAG Integration & 10--12 & 3 & RAG retrieval, LLM prompting, compliance scoring \\
+\hline
+M5: Testing, Eval. \& Writing & 13--15 & 3 & Integration testing, documentation, final report \\
+\hline
+Week 16 & 16 & 1 & Final submission and presentation \\
+\hline
+\end{tabular}
+\caption{16-week capstone project timeline showing five milestones, duration, and key deliverables.}
+\label{fig:gantt}
+\end{figure}
+
+\section{Potential Challenges and Mitigation}
+Several challenges may arise during the execution of this project:
+\begin{itemize}
+    \item \textbf{Bot Detection on Complex Sites:} Major platforms (e.g., Meta) use advanced anti-bot systems that block headless Playwright clients.
+    \item \textit{Mitigation:} Implement stealth-routing, user-agent randomization, and load initial policies from known canonical API paths where possible.
+    \item \textbf{Context Window Limitations:} Full privacy policies are extremely long (10k+ words). Passing multiple policies and full HAR JSON logs to an LLM might exceed the context window or incur high token costs.
+    \item \textit{Mitigation:} Pre-extract and summarize HAR network traces into structured evidence snippets (e.g., list of set cookies, unique third-party domains) before passing them to the prompt.
+    \item \textbf{LLM Hallucinations on Legal Text:} The LLM might cite non-existent articles or misinterpret compliance rules.
+    \item \textit{Mitigation:} Use a strong retriever to inject the exact legal text of the retrieved article into the prompt, forcing the LLM to ground its decisions and quotes in the retrieved text.
+\end{itemize}
+
+\section{Use of AI Declaration}
+In accordance with Capstone Project Guidelines, the use of AI tools in this project is declared as follows:
+
+Large Language Models (including Google Gemini 3.5 and Anthropic Claude 4.6) were used as productivity aids during the development of this proposal and the project code. The use of AI was transparent and intentional, and all AI assistance was disclosed to maintain academic integrity. Specifically, AI tools assisted in:
+
+\begin{enumerate}
+    \item Formatting the LaTeX template structure and drafting academic sections based on manual literature research and systematic review of the ten selected papers.
+    \item Generating the BibTeX bibliography file based on the metadata and publication details of the selected papers.
+    \item Designing Python regular expressions for segmenting and parsing legal document structures within the compliance pipeline loader module.
+    \item Creating the system architecture diagram (TikZ) and Gantt chart (pgfgantt) visualizations for this proposal.
+\end{enumerate}
+
+All core technical design decisions, system architecture layouts, algorithm selection, and code debugging were directed, reviewed, and finalized by the author to ensure complete transparency, academic integrity, and code correctness. The author took full responsibility for all architectural choices and implementation details of the compliance system.
+
+\bibliographystyle{IEEEtran}
+\bibliography{project_proposal}
+
+\end{document}

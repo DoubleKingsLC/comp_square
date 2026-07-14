@@ -1,2 +1,12 @@
 policy_documents/
 telemetry_output/
+venv/
+chroma_db/
+__pycache__/
+.DS_Store
+ingestion/data/
+*.aux
+*.log
+*.bbl
+*.blg
+~$*
