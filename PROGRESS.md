@@ -4,6 +4,11 @@ Chronological record of implementation work. Newest first.
 
 ---
 
+## 2026-07-19 — Report frontend (Phase 5)
+
+- `rag/report_builder.py`: renders scorer JSON as a **self-contained HTML report** (inline CSS, no JS/server — opens offline). Header with overall score + verdict, per-dimension cards sorted worst-first (verdict badge, score bar, article quote, policy claim, behavioural evidence, Lalaine discrepancy label, recommendation, confidence), optional behavioural-evidence appendix via `--evidence`, disclaimer + protocol footer.
+- Generated `compliance_reports/www.independent.ie_20260712_report.html` from the real scored run — demo flow for the presentation: run scorer CLI → open HTML.
+
 ## 2026-07-13 — Deliverable 2 materials
 
 - `Deliverable2_Supervisor_Update.pptx` — 14 slides + speaker notes for the 20-min update. Structured to answer the last meeting's criticisms head-on: per-paper depth with adopted elements (slides 3–4 + notes), gaps→design (5), model choices with empirical justification (7), code provenance + why-not-existing-code (8), live results (10), error analysis before/after (11), evaluation plan (12).
