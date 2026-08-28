@@ -86,6 +86,12 @@ discrepancy_type (only when notice and practice diverge, else null):
   "inadequate" — policy mentions the practice but too vaguely to satisfy \
 the Rule
 
+Quotation discipline: policy_claim and breach.requirement_text must be \
+copied VERBATIM from the supplied text, character for character. Do not \
+paraphrase, summarise, tidy up wording or merge sentences. If no single \
+passage says what you need, set the field to null rather than composing one. \
+Use "..." only to elide words inside an otherwise exact quotation.
+
 Evidence discipline (strict):
   - Cite ONLY behaviour explicitly listed in the FACTS PART 2 block. Never \
 infer, assume, or invent events that are not listed there.
@@ -139,8 +145,17 @@ Apply the Rule to the Facts (IRAC) and return ONLY this JSON:
 def load_policies(policy_paths: list[str]) -> str:
     """Read scraped policy .md files (full text — see architecture doc §3.2)."""
     if not policy_paths:
-        return ("No policy document was retrieved for this site. Treat the "
-                "policy as silent on all issues.")
+        return ("No policy document was retrieved by the auditing crawler. "
+                "IMPORTANT: this may be a retrieval failure (bot-blocking, "
+                "cross-domain hosting) rather than the site lacking a policy — "
+                "do NOT treat the absence of policy text as evidence that no "
+                "policy exists or as a violation in itself. Treat the policy "
+                "as unavailable; cap confidence at 0.6. Because the notice "
+                "could not be read, you MUST set policy_claim to null and "
+                "discrepancy_type to null: with no policy text it is impossible "
+                "to establish that something was undisclosed, contradicted or "
+                "inadequately described. Judge only the observed behaviour "
+                "against the retrieved law.")
     blocks = []
     for p in policy_paths:
         path = Path(p)
@@ -151,12 +166,14 @@ def load_policies(policy_paths: list[str]) -> str:
     return "\n\n".join(blocks)
 
 
-def select_evidence(evidence: dict | None, dim: dict, max_items: int = 12) -> str:
-    """Render only the evidence keys relevant to this dimension."""
+def select_evidence(evidence: dict | None, dim: dict, max_items: int = 12) -> tuple[str, bool]:
+    """Render only the evidence keys relevant to this dimension.
+    Returns (context_text, has_events) — has_events is True iff at least one
+    of the dimension's evidence keys contains actual observed events."""
     if evidence is None:
         return ("No behavioural telemetry available for this scan. Judge on "
                 "the policy text alone; prefer NOT_ADDRESSED or lower "
-                "confidence where behaviour would be needed.")
+                "confidence where behaviour would be needed."), False
 
     lines = [
         f"Scan of {evidence.get('domain')}.",
@@ -190,7 +207,8 @@ def select_evidence(evidence: dict | None, dim: dict, max_items: int = 12) -> st
         else:
             lines.append(f"\n{key}: {val}")
 
-    if len(lines) == 4 and dim["evidence_keys"]:
+    has_events = len(lines) > 4
+    if not has_events and dim["evidence_keys"]:
         lines.append(
             "\nNO events of the relevant evidence types were observed in this "
             "scan. IMPORTANT: absence of observed events means you MUST NOT "
@@ -200,7 +218,7 @@ def select_evidence(evidence: dict | None, dim: dict, max_items: int = 12) -> st
     if not dim["evidence_keys"]:
         lines.append("\n(This dimension is assessed on policy text; behavioural "
                      "evidence is not applicable.)")
-    return "\n".join(lines)
+    return "\n".join(lines), has_events
 
 
 def build_prompt(dim: dict, law_context: str, policy_context: str,
@@ -331,6 +349,32 @@ def score_site(domain: str,
 
     results = []
     for dim in dims:
+        evidence_context, has_events = select_evidence(evidence, dim)
+
+        # Deterministic insufficiency guard: with no policy text AND no
+        # observed events of this dimension's types, there is nothing to
+        # judge — abstain before retrieval or LLM invocation. Prevents the
+        # failure mode observed on bot-blocked scans (ndtv.com, 2026-07-20)
+        # where an empty capture produced confident FAIL verdicts.
+        if not dry_run and not (policies or []) and not has_events:
+            results.append({
+                "dimension": dim["id"], "score": None,
+                "verdict": "NOT_ADDRESSED", "confidence": 0.3,
+                "breach": None, "policy_claim": None, "policy_section": None,
+                "behavioral_evidence": None, "discrepancy_type": None,
+                "explanation": ("No policy document retrieved and no "
+                                "behavioural events of the relevant types "
+                                "observed — insufficient evidence to assess. "
+                                "(Deterministic guard; LLM not invoked.)"),
+                "recommendation": ("Re-run the scan; if the capture was "
+                                   "degenerate the site may be blocking the "
+                                   "headless browser."),
+                "severity": dim["severity"],
+            })
+            print(f"[*] {dim['id']}: insufficient evidence — NOT_ADDRESSED (guard)")
+            continue
+
+        chunks = []
         if law_lookup:
             retrieve_for_dimension, render_law_context = law_lookup
             chunks = retrieve_for_dimension(dim["retrieval_query"],
@@ -341,7 +385,6 @@ def score_site(domain: str,
         else:
             law_context = "[dry-run: legal articles would be retrieved here]"
 
-        evidence_context = select_evidence(evidence, dim)
         prompt = build_prompt(dim, law_context, policy_context, evidence_context)
 
         if dry_run:
@@ -354,6 +397,14 @@ def score_site(domain: str,
         raw = call_llm(prompt, model=model)
         result = parse_response(raw, dim["id"])
         result["severity"] = dim["severity"]
+        # Retrieval provenance — makes the verdict auditable after the fact:
+        # which articles were actually placed in front of the model, and the
+        # exact rule text it was allowed to quote. Consumed by
+        # evaluation/verify_report.py to detect ungrounded citations.
+        result["retrieved_articles"] = [
+            {"regulation": c.get("regulation"), "article": c.get("article"),
+             "score": c.get("score")} for c in chunks]
+        result["rule_text"] = law_context
         results.append(result)
         print(f"    -> {result['verdict']} (score {result.get('score')}, "
               f"confidence {result.get('confidence')})")

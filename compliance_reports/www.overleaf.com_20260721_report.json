@@ -1,0 +1,74 @@
+{
+  "domain": "www.overleaf.com",
+  "scan_date": "2026-07-21T15:46:40.417866+00:00",
+  "model": "gpt-4o-mini",
+  "regulations_filter": [
+    "GDPR",
+    "PECR"
+  ],
+  "har_file": "/Users/aaronjjean/Documents/GitHub/comp_square/telemetry_output/www.overleaf.com_20260721_154605.har",
+  "policies": [
+    "/Users/aaronjjean/Documents/GitHub/comp_square/policy_documents/www.overleaf.com_privacy_policy.md"
+  ],
+  "disclaimer": "Automated research output. All findings are POTENTIAL violations and do not constitute legal advice.",
+  "overall_score": 44,
+  "overall_verdict": "POTENTIAL_NON_COMPLIANCE",
+  "dimensions_scored": 3,
+  "dimensions_not_addressed": 0,
+  "dimensions": [
+    {
+      "dimension": "pre_consent_tracking",
+      "score": 50,
+      "verdict": "PARTIAL",
+      "confidence": 0.7,
+      "breach": {
+        "regulation": "GDPR",
+        "article": "7",
+        "requirement_text": "the controller shall be able to demonstrate that the data subject has consented to processing of his or her personal data."
+      },
+      "policy_claim": "we may collect this type of information using cookies and other similar technologies",
+      "policy_section": "How do we collect and use personal data?",
+      "behavioral_evidence": null,
+      "discrepancy_type": null,
+      "explanation": "The policy states that cookies may be used to collect information, but it does not clearly specify that consent must be obtained before such cookies are set. The absence of observed events means we cannot assert a behavioral violation, but the policy's language is vague regarding pre-consent tracking practices.",
+      "recommendation": "Clarify the policy to explicitly state that consent is required before any tracking cookies are installed.",
+      "severity": "critical"
+    },
+    {
+      "dimension": "tracking_without_consent",
+      "score": 50,
+      "verdict": "PARTIAL",
+      "confidence": 0.7,
+      "breach": {
+        "regulation": "PECR",
+        "article": "6",
+        "requirement_text": "the subscriber or user is provided with clear and comprehensive information about the purpose of the storage or access"
+      },
+      "policy_claim": "we may also collect this type of information using cookies and other similar technologies",
+      "policy_section": "How do we collect and use personal data?",
+      "behavioral_evidence": null,
+      "discrepancy_type": null,
+      "explanation": "The policy mentions the use of cookies and similar technologies for data collection, but it does not provide clear and comprehensive information about how user consent is obtained or managed. Since no relevant behavioral evidence was observed, the compliance assessment is based solely on the policy text, which is vague regarding consent mechanisms.",
+      "recommendation": "The site should clarify how user consent is obtained for tracking and provide detailed information on the types of cookies used and their purposes.",
+      "severity": "critical"
+    },
+    {
+      "dimension": "disclosure_of_third_parties",
+      "score": 25,
+      "verdict": "PARTIAL",
+      "confidence": 0.7,
+      "breach": {
+        "regulation": "GDPR",
+        "article": "13",
+        "requirement_text": "the recipients or categories of recipients of the personal data, if any"
+      },
+      "policy_claim": "We do not generally disclose or share personal data with third parties, except where it\u2019s necessary for legitimate business reasons",
+      "policy_section": "Who we share your personal data with",
+      "behavioral_evidence": "third_party_domains: gstatic.com, recaptcha.net",
+      "discrepancy_type": "contrary",
+      "explanation": "The policy states that personal data is not generally shared with third parties, yet the observed behavior shows that data is being sent to third-party domains, specifically gstatic.com and recaptcha.net. This contradiction indicates a potential violation of the requirement to disclose third-party recipients of personal data.",
+      "recommendation": "Update the privacy policy to accurately reflect the third parties that receive personal data, including gstatic.com and recaptcha.net, and ensure that users are informed about these disclosures.",
+      "severity": "high"
+    }
+  ]
+}

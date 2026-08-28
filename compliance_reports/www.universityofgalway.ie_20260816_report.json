@@ -1,0 +1,144 @@
+{
+  "domain": "www.universityofgalway.ie",
+  "scan_date": "2026-08-16T19:36:28.360535+00:00",
+  "model": "gpt-4o-mini",
+  "regulations_filter": [
+    "GDPR",
+    "PECR"
+  ],
+  "har_file": "/Users/aaronjjean/Documents/GitHub/comp_square/telemetry_output/www.universityofgalway.ie_20260816_193559.har",
+  "policies": [
+    "/Users/aaronjjean/Documents/GitHub/comp_square/policy_documents/www.universityofgalway.ie_privacy_policy.md",
+    "/Users/aaronjjean/Documents/GitHub/comp_square/policy_documents/www.universityofgalway.ie_cookie_policy.md"
+  ],
+  "disclaimer": "Automated research output. All findings are POTENTIAL violations and do not constitute legal advice.",
+  "overall_score": 15,
+  "overall_verdict": "POTENTIAL_NON_COMPLIANCE",
+  "dimensions_scored": 3,
+  "dimensions_not_addressed": 0,
+  "dimensions": [
+    {
+      "dimension": "pre_consent_tracking",
+      "score": 0,
+      "verdict": "FAIL",
+      "confidence": 1.0,
+      "breach": {
+        "regulation": "GDPR",
+        "article": "7",
+        "requirement_text": "the controller shall be able to demonstrate that the data subject has consented to processing of his or her personal data."
+      },
+      "policy_claim": "No personal data is stored on these cookies but, under EU law, we still need to ask you this every 6 months.",
+      "policy_section": "Cookies",
+      "behavioral_evidence": "cookie 'sa-user-id' (tags.srv.stackadapt.com), lifetime 365d",
+      "discrepancy_type": "contrary",
+      "explanation": "The site installs profiling cookies before obtaining user consent, which contradicts the requirement that consent must be demonstrated prior to processing personal data. The policy states that consent is needed, but the observed behavior shows that cookies are being set without consent.",
+      "recommendation": "Implement a mechanism to ensure that no profiling cookies are set until after user consent is obtained.",
+      "severity": "critical",
+      "retrieved_articles": [
+        {
+          "regulation": "GDPR",
+          "article": "7",
+          "score": null
+        },
+        {
+          "regulation": "PECR",
+          "article": "6",
+          "score": null
+        },
+        {
+          "regulation": "PECR",
+          "article": "6",
+          "score": null
+        },
+        {
+          "regulation": "PECR",
+          "article": "2",
+          "score": 0.4019
+        }
+      ],
+      "rule_text": "[GDPR \u2014 Article/Section 7]\nArticle 7\nConditions for consent\n\n1.\u00a0\u00a0\u00a0Where processing is based on consent, the controller shall be able to demonstrate that the data subject has consented to processing of his or her personal data.\n\n2.\u00a0\u00a0\u00a0If the data subject's consent is given in the context of a written declaration which also concerns other matters, the request for consent shall be presented in a manner which is clearly distinguishable from the other matters, in an intelligible and easily accessible form, using clear and plain language. Any part of such a declaration which constitutes an infringement of this Regulation shall not be binding.\n\n3.\u00a0\u00a0\u00a0The data subject shall have the right to withdraw his or her consent at any time. The withdrawal of consent shall not affect the lawfulness of processing based on consent before its withdrawal. Prior to giving consent, the data subject shall be informed thereof. It shall be as easy to withdraw as to give consent.\n\n4.\u00a0\u00a0\u00a0When assessing whether consent is freely given, utmost account shall be taken of whether, \ninter alia\n, the performance of a contract, including the provision of a service, is conditional on consent to the processing of personal data that is not necessary for the performance of that contract.\n\n[PECR \u2014 Article/Section 6]\n6.\n\u2014\n(1)\n\nRegulation 6(1) does not prevent a person storing information, or gaining access to information stored, in the terminal equipment of a subscriber or user if\u2014\n\n(a)\nthe person provides an information society service by means of a website,\n\n(b)\nthe sole purpose of the storage or access is\u2014\n\n(i)\nto enable the way the website appears or functions when displayed on, or accessed by, the terminal equipment to adapt to the preferences of the subscriber or user, or\n\n(ii)\nto otherwise enable an enhancement of the appearance or functionality of the website when displayed on, or accessed by, the terminal equipment,\n\n(c)\nthe subscriber or user is provided with clear and comprehensive information about the purpose of the storage or access, and\n\n(d)\nthe subscriber or user is given a simple means of objecting, free of charge, to the storage or access and does not object.\n\n(2)\n\nWhere an electronic communications network is used by the same person to store or access information in the terminal equipment of a subscriber or user for the same purpose on more than one occasion, it is sufficient that the requirements of sub-paragraph (1)(c) and (d) are met in respect of the initial use.\n\nEmergency assistance\nU.K.\n7.\n\nRegulation 6(1) does not prevent a person storing information, or gaining access to information stored, in the terminal equipment of a subscriber or user if\u2014\n\n(a)\nthe person receives a communication from the terminal equipment,\n\n(b)\nthe communication is a request from the subscriber or user for emergency assistance or otherwise indicates that the subscriber or user is in need of emergency assistance, and\n\n(c)\nthe sole purpose of the storage or access is to enable the geographical position of the subscriber or user to be ascertained with a view to the emergency assistance being provided.\n]\n\n[PECR \u2014 Article/Section 6]\nRegulation 6\n[\nF80\nSchedule A1\nU.K.\nStoring information in the terminal equipment of a subscriber or user\nTextual Amendments\nF80\nSch. A1 inserted (5.2.2026) by \nData (Use and Access) Act 2025 (c. 18)\n, \ns. 142(1)\n, \nSch. 12\n; \nS.I. 2026/82\n, \nreg. 2(z13)\nInterpretation\nU.K.\n\n[PECR \u2014 Article/Section 2]\n2.\n\u2014\n(1)\n\nRegulation 6(1) does not prevent a person storing information, or gaining access to information stored, in the terminal equipment of a subscriber or user if the subscriber or user\u2014\n\n(a)\nis provided with clear and comprehensive information about the purpose of the storage or access, and\n\n(b)\ngives consent to the storage or access.\n\n(2)\n\nWhere an electronic communications network is used by the same person to store or access information in the terminal equipment of a subscriber or user for the same purpose on more than one occasion, it is sufficient that the requirements of sub-paragraph (1) are met in respect of the initial use.\n\n(3)\n\nFor the purposes of sub-paragraph (1)(b), the means by which the subscriber or user may signify consent include\u2014\n\n(a)\namending or setting controls on the internet browser which the subscriber or user uses;\n\n(b)\nusing another application or programme.\n\nTransmission of a communication over an electronic communications network\nU.K.\n3.\n\nRegulation 6(1) does not apply to\u2014\n\n(a)\ntechnical storage of information in the terminal equipment of a subscriber or user, or\n\n(b)\ntechnical access to information stored in such equipment,\n\nfor the sole purpose of carrying out the transmission of a communication over an electronic communications network.\n\nStorage or access strictly necessary to provide an information society service\nU.K."
+    },
+    {
+      "dimension": "tracking_without_consent",
+      "score": 24,
+      "verdict": "FAIL",
+      "confidence": 0.9,
+      "breach": {
+        "regulation": "PECR",
+        "article": "6(1)",
+        "requirement_text": "a person must not store information, or gain access to information stored, in the terminal equipment of a subscriber or user."
+      },
+      "policy_claim": "No personal data is stored on these cookies but, under EU law, we still need to ask you this every 6 months.",
+      "policy_section": "Cookies",
+      "behavioral_evidence": "tracker_requests (9): stackadapt.com [Advertising], googlesyndication.com [FingerprintingGeneral], google-analytics.com [FingerprintingGeneral]",
+      "discrepancy_type": "contrary",
+      "explanation": "The observed behavior shows that multiple third-party trackers were contacted without user consent, which contradicts the policy claim that personal data is not stored without consent. The policy does not adequately address the use of these trackers in relation to user consent.",
+      "recommendation": "The University should revise its cookie policy to explicitly state how it handles third-party trackers and ensure that user consent is obtained before any tracking occurs.",
+      "severity": "critical",
+      "retrieved_articles": [
+        {
+          "regulation": "PECR",
+          "article": "6",
+          "score": null
+        },
+        {
+          "regulation": "PECR",
+          "article": "6",
+          "score": null
+        },
+        {
+          "regulation": "PECR",
+          "article": "6",
+          "score": 0.48
+        },
+        {
+          "regulation": "PECR",
+          "article": "4",
+          "score": 0.4269
+        }
+      ],
+      "rule_text": "[PECR \u2014 Article/Section 6]\n6.\n\u2014\n(1)\n\nRegulation 6(1) does not prevent a person storing information, or gaining access to information stored, in the terminal equipment of a subscriber or user if\u2014\n\n(a)\nthe person provides an information society service by means of a website,\n\n(b)\nthe sole purpose of the storage or access is\u2014\n\n(i)\nto enable the way the website appears or functions when displayed on, or accessed by, the terminal equipment to adapt to the preferences of the subscriber or user, or\n\n(ii)\nto otherwise enable an enhancement of the appearance or functionality of the website when displayed on, or accessed by, the terminal equipment,\n\n(c)\nthe subscriber or user is provided with clear and comprehensive information about the purpose of the storage or access, and\n\n(d)\nthe subscriber or user is given a simple means of objecting, free of charge, to the storage or access and does not object.\n\n(2)\n\nWhere an electronic communications network is used by the same person to store or access information in the terminal equipment of a subscriber or user for the same purpose on more than one occasion, it is sufficient that the requirements of sub-paragraph (1)(c) and (d) are met in respect of the initial use.\n\nEmergency assistance\nU.K.\n7.\n\nRegulation 6(1) does not prevent a person storing information, or gaining access to information stored, in the terminal equipment of a subscriber or user if\u2014\n\n(a)\nthe person receives a communication from the terminal equipment,\n\n(b)\nthe communication is a request from the subscriber or user for emergency assistance or otherwise indicates that the subscriber or user is in need of emergency assistance, and\n\n(c)\nthe sole purpose of the storage or access is to enable the geographical position of the subscriber or user to be ascertained with a view to the emergency assistance being provided.\n]\n\n[PECR \u2014 Article/Section 6]\nRegulation 6\n[\nF80\nSchedule A1\nU.K.\nStoring information in the terminal equipment of a subscriber or user\nTextual Amendments\nF80\nSch. A1 inserted (5.2.2026) by \nData (Use and Access) Act 2025 (c. 18)\n, \ns. 142(1)\n, \nSch. 12\n; \nS.I. 2026/82\n, \nreg. 2(z13)\nInterpretation\nU.K.\n\n[PECR \u2014 Article/Section 6]\n6.\n\u2014\n(1)\n\nSubject to Schedule A1, a person must not store information, or gain access to information stored, in the terminal equipment of a subscriber or user.\n\n(2)\n\nIn paragraph (1) and Schedule A1\u2014\n\n(a)\na reference (however expressed) to storing information, or gaining access to information stored, in the terminal equipment of a subscriber or user includes a reference to instigating the storage or access, and\n\n(b)\nexcept as otherwise provided, a reference (however expressed) to gaining access to information stored in the terminal equipment of a subscriber or user includes a reference to collecting or monitoring information automatically emitted by the terminal equipment.\n]\n\nTextual Amendments\nF30\nReg. 6 substituted (5.2.2026) by \nData (Use and Access) Act 2025 (c. 18)\n, \nss. 112(2)\n, \n142(1)\n; \nS.I. 2026/82\n, \nreg. 2(w)\n[\nF31\nPower to provide exceptions to regulation 6(1)\nU.K.\n\n[PECR \u2014 Article/Section 4]\n4.\n\u2014\n(1)\n\nRegulation 6(1) does not apply to\u2014\n\n(a)\ntechnical storage of information in the terminal equipment of a subscriber or user, or\n\n(b)\ntechnical access to information stored in such equipment,\n\nwhere the storage or access is strictly necessary for the provision of an information society service requested by the subscriber or user.\n\n(2)\n\nFor the purposes of this paragraph, the technical storage of, or technical access to, information is strictly necessary for the provision of an information society service requested by the subscriber or user if, for example, the storage or access is strictly necessary\u2014\n\n(a)\nto protect information provided in connection with, or relating to, the provision of the service requested,\n\n(b)\nto ensure that the security of the terminal equipment of the subscriber or user is not adversely affected by the provision of the service requested,\n\n(c)\nto prevent or detect fraud in connection with the provision of the service requested,\n\n(d)\nto prevent or detect technical faults in connection with the provision of the service requested, or\n\n(e)\nto enable either of the following things to be done where necessary for the provision of the service requested\u2014\n\n(i)\nautomatically authenticating the identity of the subscriber or user, or\n\n(ii)\nmaintaining a record of selections made on a website, or information put into a website, by the subscriber or user.\n\nCollecting information for statistical purposes\nU.K."
+    },
+    {
+      "dimension": "disclosure_of_third_parties",
+      "score": 24,
+      "verdict": "FAIL",
+      "confidence": 1.0,
+      "breach": {
+        "regulation": "GDPR",
+        "article": "Article 13",
+        "requirement_text": "the recipients or categories of recipients of the personal data, if any;"
+      },
+      "policy_claim": "The University of Galway will not disclose any personal information obtained from its Web site to any third party unless it is in accordance with University Policy and applicable law.",
+      "policy_section": "Information Disclosure",
+      "behavioral_evidence": "third_party_domains (7): google-analytics.com, googleapis.com, googlesyndication.com, googletagmanager.com, gstatic.com, nuigalway.ie, stackadapt.com",
+      "discrepancy_type": "contrary",
+      "explanation": "The policy states that the University will not disclose personal information to third parties unless in accordance with policy and law. However, the observed behavior shows that data is being sent to multiple third-party domains, which contradicts the policy claim.",
+      "recommendation": "The University should update its privacy policy to accurately reflect the third parties that receive personal data and ensure compliance with GDPR requirements.",
+      "severity": "high",
+      "retrieved_articles": [
+        {
+          "regulation": "GDPR",
+          "article": "13",
+          "score": null
+        },
+        {
+          "regulation": "GDPR",
+          "article": "19",
+          "score": 0.4823
+        },
+        {
+          "regulation": "GDPR",
+          "article": "33",
+          "score": 0.4751
+        },
+        {
+          "regulation": "GDPR",
+          "article": "11",
+          "score": 0.4609
+        }
+      ],
+      "rule_text": "[GDPR \u2014 Article/Section 13]\nArticle 13\nInformation to be provided where personal data are collected from the data subject\n\n1.\u00a0\u00a0\u00a0Where personal data relating to a data subject are collected from the data subject, the controller shall, at the time when personal data are obtained, provide the data subject with all of the following information:\n\n(a)\n\nthe identity and the contact details of the controller and, where applicable, of the controller's representative;\n\n(b)\n\nthe contact details of the data protection officer, where applicable;\n\n(c)\n\nthe purposes of the processing for which the personal data are intended as well as the legal basis for the processing;\n\n(d)\n\nwhere the processing is based on point (f) of Article 6(1), the legitimate interests pursued by the controller or by a third party;\n\n(e)\n\nthe recipients or categories of recipients of the personal data, if any;\n\n(f)\n\nwhere applicable, the fact that the controller intends to transfer personal data to a third country or international organisation and the existence or absence of an adequacy decision by the Commission, or in the case of transfers referred to in Article\u00a046 or 47, or the second subparagraph of Article\u00a049(1), reference to the appropriate or suitable safeguards and the means by which to obtain a copy of them or where they have been made available.\n\n2.\u00a0\u00a0\u00a0In addition to the information referred to in paragraph 1, the controller shall, at the time when personal data are obtained, provide the data subject with the following further information necessary to ensure fair and transparent processing:\n\n(a)\n\nthe period for which the personal data will be stored, or if that is not possible, the criteria used to determine that period;\n\n(b)\n\nthe existence of the right to request from the controller access to and rectification or erasure of personal data or restriction of processing concerning the data subject or to object to processing as well as the right to data portability;\n\n(c)\n\nwhere the processing is based on point (a) of Article 6(1) or point (a) of Article\u00a09(2), the existence of the right to withdraw consent at any time, without affecting the lawfulness of processing based on consent before its withdrawal;\n\n(d)\n\nthe right to lodge a complaint with a supervisory authority;\n\n(e)\n\nwhether the provision of personal data is a statutory or contractual requirement, or a requirement necessary to enter into a contract, as well as whether the data subject is obliged to provide the personal data and of the possible consequences of failure to provide such data;\n\n(f)\n\nthe existence of automated decision-making, including profiling, referred to in Article 22(1) and (4) and, at least in those cases, meaningful information about the logic involved, as well as the significance and the envisaged consequences of such processing for the data subject.\n\n3.\u00a0\u00a0\u00a0Where the controller intends to further process the personal data for a purpose other than that for which the personal data were collected, the controller shall provide the data subject prior to that further processing with information on that other purpose and with any relevant further information as referred to in paragraph 2.\n\n4.\u00a0\u00a0\u00a0Paragraphs 1, 2 and 3 shall not apply where and insofar as the data subject already has the information.\n\n[GDPR \u2014 Article/Section 19]\nArticle 19\nNotification obligation regarding rectification or erasure of personal data or restriction of processing\n\nThe controller shall communicate any rectification or erasure of personal data or restriction of processing carried out in accordance with Article\u00a016, Article 17(1) and Article 18 to each recipient to whom the personal data have been disclosed, unless this proves impossible or involves disproportionate effort. The controller shall inform the data subject about those recipients if the data subject requests it.\n\n[GDPR \u2014 Article/Section 33]\nArticle 33\nNotification of a personal data breach to the supervisory authority\n\n1.\u00a0\u00a0\u00a0In the case of a personal data breach, the controller shall without undue delay and, where feasible, not later than 72 hours after having become aware of it, notify the personal data breach to the supervisory authority competent in accordance with Article\u00a055, unless the personal data breach is unlikely to result in a risk to the rights and freedoms of natural persons. Where the notification to the supervisory authority is not made within 72\u00a0hours, it shall be accompanied by reasons for the delay.\n\n2.\u00a0\u00a0\u00a0The processor shall notify the controller without undue delay after becoming aware of a personal data breach.\n\n3.\u00a0\u00a0\u00a0The notification referred to in paragraph 1 shall at least:\n\n(a)\n\ndescribe the nature of the personal data breach including where possible, the categories and approximate number of data subjects concerned and the categories and approximate number of personal data records concerned;\n\n(b)\n\ncommunicate the name and contact details of the data protection officer or other contact point where more information can be obtained;\n\n(c)\n\ndescribe the likely consequences of the personal data breach;\n\n(d)\n\ndescribe the measures taken or proposed to be taken by the controller to address the personal data breach, including, where appropriate, measures to mitigate its possible adverse effects.\n\n4.\u00a0\u00a0\u00a0Where, and in so far as, it is not possible to provide the information at the same time, the information may be provided in phases without undue further delay.\n\n5.\u00a0\u00a0\u00a0The controller shall document any personal data breaches, comprising the facts relating to the personal data breach, its effects and the remedial action taken. That documentation shall enable the supervisory authority to verify compliance with this Article.\n\n[GDPR \u2014 Article/Section 11]\nArticle 11\nProcessing which does not require identification\n\n1.\u00a0\u00a0\u00a0If the purposes for which a controller processes personal data do not or do no longer require the identification of a data subject by the controller, the controller shall not be obliged to maintain, acquire or process additional information in order to identify the data subject for the sole purpose of complying with this Regulation.\n\n2.\u00a0\u00a0\u00a0Where, in cases referred to in paragraph 1 of this Article, the controller is able to demonstrate that it is not in a position to identify the data subject, the controller shall inform the data subject accordingly, if possible. In such cases, Articles 15 to 20 shall not apply except where the data subject, for the purpose of exercising his or her rights under those articles, provides additional information enabling his or her identification.\n\nCHAPTER III\n\nRights of the data subject"
+    }
+  ]
+}

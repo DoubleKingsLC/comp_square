@@ -1,0 +1,22 @@
+# comp_square — pipeline dependencies
+# Install:  source venv/bin/activate && pip install -r requirements.txt
+#           python3 -m playwright install chromium
+
+# Runtime collection
+playwright>=1.40
+beautifulsoup4>=4.12
+
+# Legal ingestion / vector store
+llama-index-core>=0.10
+llama-index-vector-stores-chroma>=0.1
+llama-index-embeddings-huggingface>=0.2
+chromadb>=0.5
+sentence-transformers>=2.7
+pdfplumber>=0.11
+
+# Scoring backends (either is sufficient; provider inferred from model name)
+openai>=1.30
+anthropic>=0.34
+
+# Frontend
+flask>=3.0

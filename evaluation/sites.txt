@@ -1,0 +1,40 @@
+# Evaluation site list — one per line: url,sector,jurisdiction
+# Edit freely. Lines starting with # are ignored.
+# The jurisdiction tag selects the applicable ePrivacy instrument:
+#   IE -> S.I. 336/2011 Reg 5(3) · UK -> PECR Reg 6 · IN -> DPDP · US -> CCPA
+# GDPR applies to IE and UK sites regardless.
+#
+# Sector labels are used to group results (news, ecommerce, education,
+# government, saas, health, finance, social). Trevisan et al. found news
+# sites worst (86%) and government best (14%) — the sector spread is what
+# lets us check whether our scores discriminate the same way.
+
+# --- News / media (expect worst) ---
+https://www.independent.ie,news,IE
+https://www.irishtimes.com,news,IE
+https://www.rte.ie,news,IE
+https://www.thejournal.ie,news,IE
+https://www.bbc.co.uk,news,UK
+https://www.theguardian.com,news,UK
+
+# --- Education / public sector (expect best) ---
+https://www.universityofgalway.ie,education,IE
+https://www.tcd.ie,education,IE
+https://www.ucd.ie,education,IE
+https://www.citizensinformation.ie,government,IE
+https://www.gov.ie,government,IE
+https://www.hse.ie,health,IE
+
+# --- E-commerce / SaaS (mixed) ---
+https://www.overleaf.com,saas,UK
+https://www.dunnesstores.com,ecommerce,IE
+https://www.harveynorman.ie,ecommerce,IE
+https://www.aerlingus.com,ecommerce,IE
+
+# --- India (DPDP jurisdiction) ---
+https://www.iitm.ac.in,education,IN
+https://www.irctc.co.in,ecommerce,IN
+
+# --- Known-hard cases (bot protection) — expect INSUFFICIENT_DATA ---
+https://www.ndtv.com,news,IN
+https://www.facebook.com,social,US

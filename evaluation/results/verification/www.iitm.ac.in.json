@@ -1,0 +1,94 @@
+{
+  "domain": "www.iitm.ac.in",
+  "report": "/sessions/wizardly-lucid-hopper/mnt/comp_square/compliance_reports/www.iitm.ac.in_20260816_report.json",
+  "model": "gpt-4o-mini",
+  "legacy_report": false,
+  "dimensions_checked": 3,
+  "dimensions_verifiable": 3,
+  "dimensions_fully_grounded": 3,
+  "dimensions_with_issues": 0,
+  "grounding_rate": 1.0,
+  "grounding_rate_all": 1.0,
+  "policy_text_available": true,
+  "evidence_available": true,
+  "check_tally": {
+    "C1_citation": {
+      "SUPPORTED": 3,
+      "UNSUPPORTED": 0,
+      "N/A": 0
+    },
+    "C2_requirement_quote": {
+      "SUPPORTED": 3,
+      "UNSUPPORTED": 0,
+      "N/A": 0
+    },
+    "C3_policy_quote": {
+      "SUPPORTED": 2,
+      "UNSUPPORTED": 0,
+      "N/A": 1
+    },
+    "C4_behavioural_claim": {
+      "SUPPORTED": 2,
+      "UNSUPPORTED": 0,
+      "N/A": 1
+    },
+    "C5_consistency": {
+      "SUPPORTED": 3,
+      "UNSUPPORTED": 0,
+      "N/A": 0
+    }
+  },
+  "dimensions": [
+    {
+      "dimension": "pre_consent_tracking",
+      "verdict": "PARTIAL",
+      "score": 50,
+      "confidence": 0.7,
+      "checks": {
+        "C1_citation": "SUPPORTED",
+        "C2_requirement_quote": "SUPPORTED",
+        "C3_policy_quote": "SUPPORTED",
+        "C4_behavioural_claim": "N/A",
+        "C5_consistency": "SUPPORTED"
+      },
+      "issues": [],
+      "legacy_no_provenance": false,
+      "verifiable": true,
+      "grounded": true
+    },
+    {
+      "dimension": "tracking_without_consent",
+      "verdict": "FAIL",
+      "score": 24,
+      "confidence": 0.9,
+      "checks": {
+        "C1_citation": "SUPPORTED",
+        "C2_requirement_quote": "SUPPORTED",
+        "C3_policy_quote": "SUPPORTED",
+        "C4_behavioural_claim": "SUPPORTED",
+        "C5_consistency": "SUPPORTED"
+      },
+      "issues": [],
+      "legacy_no_provenance": false,
+      "verifiable": true,
+      "grounded": true
+    },
+    {
+      "dimension": "disclosure_of_third_parties",
+      "verdict": "FAIL",
+      "score": 24,
+      "confidence": 1.0,
+      "checks": {
+        "C1_citation": "SUPPORTED",
+        "C2_requirement_quote": "SUPPORTED",
+        "C3_policy_quote": "N/A",
+        "C4_behavioural_claim": "SUPPORTED",
+        "C5_consistency": "SUPPORTED"
+      },
+      "issues": [],
+      "legacy_no_provenance": false,
+      "verifiable": true,
+      "grounded": true
+    }
+  ]
+}

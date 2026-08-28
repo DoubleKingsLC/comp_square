@@ -450,8 +450,8 @@ async def extract_links_from_consent_popup(page, base_url: str, primary_domain: 
                 const results = [];
                 const seen = new Set();
                 const addLink = (a, ctx) => {
-                    const href = (a.href || '').trim();
-                    const text = (a.innerText || a.textContent || '').trim();
+                    const href = String(a.href || '').trim();
+                    const text = String(a.innerText || a.textContent || '').trim();
                     if (!href || seen.has(href)) return;
                     seen.add(href);
                     results.push({ href, text, context: ctx });
@@ -620,8 +620,8 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
                     const results = [];
                     const seen = new Set();
                     const addLink = (a, ctx) => {
-                        const href = (a.href || '').trim();
-                        const text = (a.innerText || a.textContent || '').trim();
+                        const href = String(a.href || '').trim();
+                        const text = String(a.innerText || a.textContent || '').trim();
                         if (!href || seen.has(href)) return;
                         seen.add(href);
                         results.push({ href, text, context: ctx });
@@ -770,7 +770,7 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
                     href = extractOnclickUrl(el.getAttribute('onclick'));
                 }
 
-                href = (href || '').trim();
+                href = String(href || '').trim();
                 if (!href || href === '#' || href.startsWith('javascript:')) return;
                 if (seen.has(href)) return;
                 seen.add(href);
@@ -781,7 +781,11 @@ async def extract_priority_policy_links(page, base_url: str, primary_domain: str
             // Also scan <form> action attributes — some login forms
             // use action="/accounts/login" without a visible link.
             document.querySelectorAll('form[action]').forEach(form => {
-                const action = (form.action || '').trim();
+                // form.action is not always a string: a form containing an input
+                // named "action" shadows the property with that element, and SVG
+                // forms expose an SVGAnimatedString. String() first, or .trim()
+                // throws and aborts the whole scrape (observed on thejournal.ie).
+                const action = String(form.action || '').trim();
                 if (!action || action === '#' || seen.has(action)) return;
                 seen.add(action);
                 results.push({ href: action, text: 'form_action' });
@@ -1820,9 +1824,17 @@ async def collect_policies(
         for category, options in candidates.items():
             if category in categorised:
                 continue
-            best = sorted(options, key=lambda x: x["score"], reverse=True)[0]
+            ranked = sorted(options, key=lambda x: x["score"], reverse=True)
+            best = ranked[0]
+            # Keep the runners-up. The highest-scoring URL is not always
+            # fetchable: publishers often expose a same-domain path that
+            # 403s or redirects, while the working policy lives on a parent
+            # company domain (e.g. independent.ie -> mediahuis.ie). Without
+            # alternatives a single 403 loses the category entirely.
+            best["alternatives"] = [o for o in ranked[1:] if o["href"] != best["href"]]
             categorised[category] = best
-            print(f"  [+] {category:<30} -> {best['href']}  (score: {best['score']})")
+            alt = f"  (+{len(best['alternatives'])} fallback)" if best["alternatives"] else ""
+            print(f"  [+] {category:<30} -> {best['href']}  (score: {best['score']}){alt}")
 
         # Only collect privacy and cookie policy documents
         categorised = {
@@ -1839,14 +1851,27 @@ async def collect_policies(
         scraped_by_category: Dict[str, str] = {}
         for category, link in categorised.items():
             is_priority = link.get("source", "").startswith("priority")
-            scrape_page = await context.new_page()
-            try:
-                result = await scrape_policy(
-                    scrape_page, link["href"], category, domain, output_path,
-                    _from_priority=is_priority,
-                )
-            finally:
-                await scrape_page.close()
+            # Try the chosen URL, then each fallback in score order, until one
+            # yields a document. A 403 or 404 on the preferred URL must not
+            # cost us the category when a working alternative was discovered.
+            attempts = [link] + list(link.get("alternatives", []))
+            result = None
+            for attempt_no, cand in enumerate(attempts):
+                if attempt_no:
+                    print(f"  [~] falling back to next candidate for "
+                          f"[{category}]: {cand['href']}")
+                scrape_page = await context.new_page()
+                try:
+                    result = await scrape_policy(
+                        scrape_page, cand["href"], category, domain, output_path,
+                        _from_priority=is_priority,
+                    )
+                finally:
+                    await scrape_page.close()
+                if result:
+                    if attempt_no:
+                        print(f"  [✓] recovered [{category}] from fallback candidate")
+                    break
             if result:
                 results.append(result)
                 try:

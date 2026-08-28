@@ -1,0 +1,6 @@
+{
+  "_comment": "Sites whose privacy/cookie policies are hosted on a parent or group domain. Key = scanned domain, value = list of domains whose scraped policy files apply. The scraper prefers same-domain URLs, so these cross-domain cases need declaring. Scrape the parent first, e.g.: python3 policy_scraper_2.py https://www.mediahuis.ie",
+  "www.independent.ie": ["www.mediahuis.ie"],
+  "www.belfasttelegraph.co.uk": ["www.mediahuis.ie"],
+  "www.instagram.com": ["www.instagram.com", "www.facebook.com"]
+}

@@ -1,0 +1,98 @@
+{
+  "domain": "www.thejournal.ie",
+  "report": "/sessions/wizardly-lucid-hopper/mnt/comp_square/compliance_reports/www.thejournal.ie_20260816_report.json",
+  "model": "gpt-4o-mini",
+  "legacy_report": false,
+  "dimensions_checked": 3,
+  "dimensions_verifiable": 3,
+  "dimensions_fully_grounded": 1,
+  "dimensions_with_issues": 2,
+  "grounding_rate": 0.333,
+  "grounding_rate_all": 0.333,
+  "policy_text_available": false,
+  "evidence_available": true,
+  "check_tally": {
+    "C1_citation": {
+      "SUPPORTED": 3,
+      "UNSUPPORTED": 0,
+      "N/A": 0
+    },
+    "C2_requirement_quote": {
+      "SUPPORTED": 3,
+      "UNSUPPORTED": 0,
+      "N/A": 0
+    },
+    "C3_policy_quote": {
+      "SUPPORTED": 0,
+      "UNSUPPORTED": 0,
+      "N/A": 3
+    },
+    "C4_behavioural_claim": {
+      "SUPPORTED": 3,
+      "UNSUPPORTED": 0,
+      "N/A": 0
+    },
+    "C5_consistency": {
+      "SUPPORTED": 1,
+      "UNSUPPORTED": 2,
+      "N/A": 0
+    }
+  },
+  "dimensions": [
+    {
+      "dimension": "pre_consent_tracking",
+      "verdict": "FAIL",
+      "score": 0,
+      "confidence": 0.6,
+      "checks": {
+        "C1_citation": "SUPPORTED",
+        "C2_requirement_quote": "SUPPORTED",
+        "C3_policy_quote": "N/A",
+        "C4_behavioural_claim": "SUPPORTED",
+        "C5_consistency": "UNSUPPORTED"
+      },
+      "issues": [
+        "C5: discrepancy_type 'neglect' asserted although no policy text was retrieved \u2014 non-disclosure cannot be established from an unread document"
+      ],
+      "legacy_no_provenance": false,
+      "verifiable": true,
+      "grounded": false
+    },
+    {
+      "dimension": "tracking_without_consent",
+      "verdict": "FAIL",
+      "score": 0,
+      "confidence": 0.6,
+      "checks": {
+        "C1_citation": "SUPPORTED",
+        "C2_requirement_quote": "SUPPORTED",
+        "C3_policy_quote": "N/A",
+        "C4_behavioural_claim": "SUPPORTED",
+        "C5_consistency": "SUPPORTED"
+      },
+      "issues": [],
+      "legacy_no_provenance": false,
+      "verifiable": true,
+      "grounded": true
+    },
+    {
+      "dimension": "disclosure_of_third_parties",
+      "verdict": "FAIL",
+      "score": 0,
+      "confidence": 0.6,
+      "checks": {
+        "C1_citation": "SUPPORTED",
+        "C2_requirement_quote": "SUPPORTED",
+        "C3_policy_quote": "N/A",
+        "C4_behavioural_claim": "SUPPORTED",
+        "C5_consistency": "UNSUPPORTED"
+      },
+      "issues": [
+        "C5: discrepancy_type 'neglect' asserted although no policy text was retrieved \u2014 non-disclosure cannot be established from an unread document"
+      ],
+      "legacy_no_provenance": false,
+      "verifiable": true,
+      "grounded": false
+    }
+  ]
+}

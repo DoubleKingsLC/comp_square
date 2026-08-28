@@ -119,8 +119,11 @@ def parse_law_refs(law_refs: str) -> list[tuple[str, str]]:
     import re
     global _LAW_REF_RE
     if _LAW_REF_RE is None:
+        # EPRIVACY-IE must precede ePrivacy in the alternation, otherwise the
+        # shorter token matches first and the national instrument is lost.
         _LAW_REF_RE = re.compile(
-            r'(GDPR|PECR|DPDP|CCPA|ePrivacy)\s+(?:Art|Article|Reg|Regulation|§)\.?\s*(\d+[A-Za-z]?)',
+            r'(EPRIVACY-IE|GDPR|PECR|DPDP|CCPA|ePrivacy)\s+'
+            r'(?:Art|Article|Reg|Regulation|§)\.?\s*(\d+[A-Za-z]?)',
             re.IGNORECASE)
     return [(m.group(1).upper(), m.group(2)) for m in _LAW_REF_RE.finditer(law_refs or "")]
 

@@ -1,0 +1,94 @@
+{
+  "domain": "www.gov.ie",
+  "report": "/sessions/wizardly-lucid-hopper/mnt/comp_square/compliance_reports/www.gov.ie_20260816_report.json",
+  "model": "gpt-4o-mini",
+  "legacy_report": true,
+  "dimensions_checked": 3,
+  "dimensions_verifiable": 0,
+  "dimensions_fully_grounded": 3,
+  "dimensions_with_issues": 0,
+  "grounding_rate": null,
+  "grounding_rate_all": 1.0,
+  "policy_text_available": false,
+  "evidence_available": true,
+  "check_tally": {
+    "C1_citation": {
+      "SUPPORTED": 0,
+      "UNSUPPORTED": 0,
+      "N/A": 3
+    },
+    "C2_requirement_quote": {
+      "SUPPORTED": 0,
+      "UNSUPPORTED": 0,
+      "N/A": 3
+    },
+    "C3_policy_quote": {
+      "SUPPORTED": 0,
+      "UNSUPPORTED": 0,
+      "N/A": 3
+    },
+    "C4_behavioural_claim": {
+      "SUPPORTED": 0,
+      "UNSUPPORTED": 0,
+      "N/A": 3
+    },
+    "C5_consistency": {
+      "SUPPORTED": 3,
+      "UNSUPPORTED": 0,
+      "N/A": 0
+    }
+  },
+  "dimensions": [
+    {
+      "dimension": "pre_consent_tracking",
+      "verdict": "NOT_ADDRESSED",
+      "score": null,
+      "confidence": 0.3,
+      "checks": {
+        "C1_citation": "N/A",
+        "C2_requirement_quote": "N/A",
+        "C3_policy_quote": "N/A",
+        "C4_behavioural_claim": "N/A",
+        "C5_consistency": "SUPPORTED"
+      },
+      "issues": [],
+      "legacy_no_provenance": true,
+      "verifiable": false,
+      "grounded": true
+    },
+    {
+      "dimension": "tracking_without_consent",
+      "verdict": "NOT_ADDRESSED",
+      "score": null,
+      "confidence": 0.3,
+      "checks": {
+        "C1_citation": "N/A",
+        "C2_requirement_quote": "N/A",
+        "C3_policy_quote": "N/A",
+        "C4_behavioural_claim": "N/A",
+        "C5_consistency": "SUPPORTED"
+      },
+      "issues": [],
+      "legacy_no_provenance": true,
+      "verifiable": false,
+      "grounded": true
+    },
+    {
+      "dimension": "disclosure_of_third_parties",
+      "verdict": "NOT_ADDRESSED",
+      "score": null,
+      "confidence": 0.3,
+      "checks": {
+        "C1_citation": "N/A",
+        "C2_requirement_quote": "N/A",
+        "C3_policy_quote": "N/A",
+        "C4_behavioural_claim": "N/A",
+        "C5_consistency": "SUPPORTED"
+      },
+      "issues": [],
+      "legacy_no_provenance": true,
+      "verifiable": false,
+      "grounded": true
+    }
+  ]
+}

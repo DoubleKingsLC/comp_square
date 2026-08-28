@@ -1,0 +1,21 @@
+domain,sector,jurisdiction,status,requests,ui_elements,policies_found,overall_score,overall_verdict,n_dimensions,n_fail,n_partial,n_pass,n_not_addressed,grounding_rate,dims_with_issues,seconds,notes
+www.independent.ie,news,IE,ok,118,247,1,34,POTENTIAL_NON_COMPLIANCE,3,2,1,0,0,1.0,0,71.7,
+www.irishtimes.com,news,IE,ok,146,647,2,34,POTENTIAL_NON_COMPLIANCE,3,1,2,0,0,1.0,0,33.0,
+www.rte.ie,news,IE,ok,197,425,1,34,POTENTIAL_NON_COMPLIANCE,3,0,3,0,0,1.0,0,29.5,
+www.thejournal.ie,news,IE,ok,166,242,0,0,POTENTIAL_NON_COMPLIANCE,3,3,0,0,0,0.333,2,51.8,
+www.bbc.co.uk,news,UK,ok,249,279,0,0,POTENTIAL_NON_COMPLIANCE,3,2,0,0,1,0.5,1,88.5,
+www.theguardian.com,news,UK,ok,107,372,2,44,POTENTIAL_NON_COMPLIANCE,3,0,3,0,0,1.0,0,28.5,
+www.universityofgalway.ie,education,IE,ok,87,193,2,15,POTENTIAL_NON_COMPLIANCE,3,3,0,0,0,1.0,0,29.9,
+www.tcd.ie,education,IE,ok,69,71,1,34,POTENTIAL_NON_COMPLIANCE,3,1,2,0,0,0.667,1,27.6,
+www.ucd.ie,education,IE,ok,66,156,2,34,POTENTIAL_NON_COMPLIANCE,3,1,2,0,0,1.0,0,28.3,
+www.citizensinformation.ie,government,IE,ok,57,238,2,53,PARTIAL,3,0,2,1,0,1.0,0,26.0,
+www.gov.ie,government,IE,ok,19,69,0,,INSUFFICIENT_DATA,3,0,0,0,3,,0,33.0,
+www.hse.ie,health,IE,collector_failed,,,,,,,,,,,,,,TIMEOUT after 480s
+www.overleaf.com,saas,UK,ok,64,104,1,44,POTENTIAL_NON_COMPLIANCE,3,0,3,0,0,1.0,0,39.2,
+www.dunnesstores.com,ecommerce,IE,collector_failed,,,,,,,,,,,,,,TIMEOUT after 480s
+www.harveynorman.ie,ecommerce,IE,ok,399,1656,0,0,POTENTIAL_NON_COMPLIANCE,3,2,0,0,1,0.5,1,61.0,
+www.aerlingus.com,ecommerce,IE,ok,13,6,2,6,POTENTIAL_NON_COMPLIANCE,3,2,1,0,0,1.0,0,31.2,
+www.iitm.ac.in,education,IN,ok,230,535,2,34,POTENTIAL_NON_COMPLIANCE,3,2,1,0,0,1.0,0,63.4,
+www.irctc.co.in,ecommerce,IN,blocked,0,0,,,,,,,,,,,,degenerate capture (bot protection suspected)
+www.ndtv.com,news,IN,blocked,1,0,,,,,,,,,,,,degenerate capture (bot protection suspected)
+www.facebook.com,social,US,ok,29,54,2,25,POTENTIAL_NON_COMPLIANCE,3,1,2,0,0,1.0,0,28.5,

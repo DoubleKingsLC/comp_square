@@ -10,7 +10,6 @@
 \usepackage{amsmath,amssymb,amsfonts}
 % Algorithm packages (template parity; used when the Implementation section is added)
 \usepackage{algorithm}
-\usepackage{algcompatible}
 \usepackage{algpseudocode}
 \usepackage{textcomp}
 \usepackage{xcolor}
@@ -35,7 +34,7 @@
 \raggedbottom
 
 % ---------- Title ----------
-\title{LLM-Driven Retrieval-Augmented Compliance Auditing for Cloud and Web Privacy: A Literature Review}
+\title{LLM-Driven Retrieval-Augmented Compliance Auditing for Cloud and Web Privacy}
 
 % ---------- Author ----------
 \author{
@@ -51,7 +50,7 @@ a.jean2@universityofgalway.ie
 
 % ---------- Abstract ----------
 \begin{abstract}
-Modern privacy regulations such as the EU General Data Protection Regulation (GDPR), India's Digital Personal Data Protection Act (DPDP), and the California Consumer Privacy Act (CCPA) require organisations to provide clear, accurate disclosures about data collection and to obtain consent before non-essential tracking. Verifying that a website's actual runtime behaviour matches the claims in its written privacy and cookie policies, however, remains a manual, error-prone, and unscalable task. This paper reviews research on automated privacy-compliance assessment across three modalities: natural-language processing of policy text, behaviour-to-policy inconsistency detection, and dynamic web consent auditing, together with the emerging use of large language models (LLMs) for legal reasoning. Rather than separating summary from critique, each research direction is reviewed alongside the specific limitation it leaves unresolved. The review shows that existing systems analyse policy text or runtime behaviour in isolation, while the few hybrid systems are confined to static analysis of compiled mobile binaries. From these observations we derive the central research gap: the absence of a unified, automated framework that ingests runtime web telemetry (HAR logs and JavaScript events), retrieves the relevant legal standard, and cross-references both against scraped policy text using retrieval-augmented generation (RAG) to detect real-world non-compliance.
+Modern privacy regulations such as the EU General Data Protection Regulation (GDPR), India's Digital Personal Data Protection Act (DPDP), and the California Consumer Privacy Act (CCPA) require organisations to provide clear, accurate disclosures about data collection and to obtain consent before non-essential tracking. Verifying that a website's actual runtime behaviour matches the claims in its written privacy and cookie policies, however, remains a manual, error-prone, and unscalable task. This paper reviews research on automated privacy-compliance assessment across three modalities: natural-language processing of policy text, behaviour-to-policy inconsistency detection, and dynamic web consent auditing, together with the emerging use of large language models (LLMs) for legal reasoning. Rather than separating summary from critique, each research direction is reviewed alongside the specific limitation it leaves unresolved. The review shows that existing systems analyse policy text or runtime behaviour in isolation, while the few hybrid systems are confined to static analysis of compiled mobile binaries. From these observations we derive the central research gap: the absence of a unified, automated framework that ingests runtime web telemetry (HAR logs and JavaScript events), retrieves the relevant legal standard, and cross-references both against scraped policy text using retrieval-augmented generation (RAG) to detect real-world non-compliance. We then describe the design and implementation of such a framework. The pipeline stores regulations in a vector database chunked by article, collects behavioural evidence with an instrumented browser, and asks an LLM to judge each compliance dimension using the retrieved law, the scraped policy and the observed behaviour together. The framework is evaluated on twenty websites across six sectors and four jurisdictions, and every verdict is then checked mechanically against the telemetry it was derived from. The prototype detects contradictions between what a site's policy claims and what the site does, and the verification found no case in which a behavioural claim was fabricated. We also report the failure modes found during testing, the guards added in response, and the limitations that the testing exposed in the pipeline itself.
 \end{abstract}
 
 % ---------- Keywords ----------
@@ -63,17 +62,19 @@ privacy compliance, large language models, retrieval-augmented generation, cooki
 % Section 1: Introduction
 % =========================
 \section{Introduction}
+\subsection{Background}
 With the rise of data privacy laws worldwide, including the EU's General Data Protection Regulation (GDPR) and India's Digital Personal Data Protection Act (DPDP), digital transparency has shifted from an ethical preference to a legal mandate. Under these frameworks, organisations are legally required to provide users with clear, detailed, and accurate disclosures regarding data collection, processing purposes, and tracking technologies. Regulations such as the UK's Privacy and Electronic Communications Regulations (PECR) further require explicit user consent before any non-essential tracking technology, such as cookies or device fingerprinting, is initiated. Empirical studies confirm that these requirements are frequently violated in practice: large-scale crawls of consent banners show that many sites set tracking cookies before any user interaction~\cite{trevisan-2019-cookielaw,bouhoula-2024-cookies}, and automated analyses of written policies reveal widespread incompleteness and ambiguity~\cite{wilson-2016-opp115,harkous-2018-polisis}.
 
+\subsection{Motivation}
 Despite these legal frameworks, real-world compliance is highly fragmented. Many organisations use template-based privacy policies that do not accurately represent their actual technical practices~\cite{zimmeck-2017-mobileapps}. Conversely, dynamic third-party scripts and marketing pixels are often added to websites without the knowledge of the primary site administrator, leading to silent data leaks and consent violations~\cite{bouhoula-2024-cookies}. Compliance auditing is therefore still performed manually by legal experts and security auditors who inspect website code, examine consent pop-ups, monitor network requests, and read legal documents line by line. This approach is slow, expensive, and unscalable.
 
-\subsection{Motivation}
-While automated tools have been developed to detect trackers or parse privacy policies, they typically operate in silos. Systems either analyse policy text using natural language processing (NLP) to evaluate readability and completeness~\cite{wilson-2016-opp115,harkous-2018-polisis,ravichander-2019-privacyqa}, or they inspect network traffic to identify tracking scripts and consent violations~\cite{trevisan-2019-cookielaw,bouhoula-2024-cookies}, without cross-referencing the two. The few systems that attempt hybrid auditing are limited to mobile app ecosystems and rely on static program analysis~\cite{zimmeck-2017-mobileapps,zimmeck-2019-maps,xiao-2023-lalaine}, which is prone to false positives from unused libraries and cannot address the runtime complexities of web-based cookie consent banners. In parallel, large language models have begun to demonstrate strong legal-reasoning ability~\cite{guha-2023-legalbench,xie-2025-llmpolicy}, but have not been integrated with live behavioural evidence.
+While automated tools have been developed to detect trackers or parse privacy policies, they typically operate in silos. Systems either analyse policy text using natural language processing (NLP)~\cite{wilson-2016-opp115,harkous-2018-polisis,ravichander-2019-privacyqa}, or they inspect network traffic to identify tracking scripts and consent violations~\cite{trevisan-2019-cookielaw,bouhoula-2024-cookies}, without cross-referencing the two. The few systems that attempt hybrid auditing are limited to mobile app ecosystems and rely on static program analysis~\cite{zimmeck-2017-mobileapps,zimmeck-2019-maps,xiao-2023-lalaine}, which is prone to false positives from unused libraries and cannot address the runtime complexities of web-based cookie consent banners. In parallel, large language models have begun to demonstrate strong legal-reasoning ability~\cite{guha-2023-legalbench,xie-2025-llmpolicy}, but have not been integrated with live behavioural evidence.
 
-The main research question addressed by the wider project, and motivated by this review, is: \textit{How can privacy compliance of web applications be measured in a continuous, contextual, and explainable manner that connects written disclosures (``notice'') to actual software execution (``practice'')?}
+\subsection{Problem Statement}
+The main research question addressed by this work is: \textit{How can privacy compliance of web applications be measured in a continuous, contextual, and explainable manner that connects written disclosures (``notice'') to actual software execution (``practice'')?}
 
 \subsection{Paper Organisation}
-The remainder of this paper is structured as follows. Section~\ref{sec:litreview} presents an integrated literature review and gap analysis, including the methodology used to select the reviewed papers, a comparative summary, and a synthesis of the key findings and resulting research gap. Subsequent sections on the proposed approach, implementation, and evaluation are deferred to later work.
+The remainder of this paper is structured as follows. Section~\ref{sec:litreview} presents an integrated literature review and gap analysis. Section~\ref{sec:approach} derives the framework design from the identified gaps and describes the working implementation, including the scoring algorithm. Section~\ref{sec:results} reports the evaluation: a case study, a batch of twenty sites, the verification of every finding against its telemetry, and the limitations this exposed. Section~\ref{sec:evalplan} sets out the threats to validity and the remaining evaluation, and Section~\ref{sec:conclusion} concludes.
 
 % =========================
 % Section 2: Literature Review + Gaps
@@ -143,9 +144,9 @@ Taken together, these findings expose a clear gap. Each strand masters a single 
 % =========================
 % Section 3: Proposed Approach
 % =========================
-\section{Proposed Approach and Methodology}
+\section{Framework Design and Implementation}
 \label{sec:approach}
-The design of the proposed framework is derived directly from the gaps identified in Section~\ref{sec:litreview} rather than chosen in the abstract. Each gap motivates a specific architectural decision, as summarised in Table~\ref{tab:gap_design}. The central observation is that the four research directions each master one modality, policy text, mobile behaviour, web behaviour, or legal reasoning, but none integrates the three sources of evidence that a real compliance judgement requires: the \emph{law} (ground-truth regulation), the \emph{notice} (the site's written policy), and the \emph{practice} (its observed runtime behaviour). The proposed framework is therefore organised around triangulating these three sources for the dynamic web, the setting left unaddressed by prior work.
+The design of the framework is derived directly from the gaps identified in Section~\ref{sec:litreview} rather than chosen in the abstract. Each gap motivates a specific architectural decision, as summarised in Table~\ref{tab:gap_design}. The central observation is that the four research directions each master one modality, policy text, mobile behaviour, web behaviour, or legal reasoning, but none integrates the three sources of evidence that a real compliance judgement requires: the \emph{law} (ground-truth regulation), the \emph{notice} (the site's written policy), and the \emph{practice} (its observed runtime behaviour). The framework is therefore organised around triangulating these three sources for the dynamic web, the setting left unaddressed by prior work. All three phases below are implemented and running; Section~\ref{sec:results} reports first results from live audits.
 
 \begin{table}[!t]
 \centering
@@ -231,6 +232,48 @@ The framework consists of three phases (Fig.~\ref{fig:architecture}):
 \subsection{Design Rationale}
 Three decisions follow directly from the literature. First, \textit{legal-specific embeddings} are used because general-purpose models capture only shallow associations on legal text~\cite{wilson-2016-opp115,harkous-2018-polisis}; domain embeddings give terms such as ``controller'' and ``data subject'' appropriate legal semantics, improving retrieval quality. Second, \textit{retrieval-augmented generation} is preferred over prompting an LLM alone because, while LLMs can reason about law~\cite{guha-2023-legalbench,xie-2025-llmpolicy}, ungrounded generation risks hallucinated citations; retrieving the exact article before scoring yields traceable, evidence-backed judgements. Third, \textit{runtime instrumentation} (rather than static analysis) is required because the unaddressed modality is dynamic web behaviour, where consent state changes with user interaction, something static mobile analysis~\cite{zimmeck-2017-mobileapps,zimmeck-2019-maps} cannot observe and text/consent-only studies~\cite{trevisan-2019-cookielaw,bouhoula-2024-cookies} do not reconcile with policy text. Together these choices make the ``notice-to-practice'' verification both possible and explainable, the combination absent from all reviewed work.
 
+\subsection{Implementation Status and Practical Tools}
+\label{sec:impl}
+The prototype is implemented in Python and organised as independently testable command-line modules, orchestrated end-to-end by a local web frontend:
+\begin{itemize}
+    \item \textbf{Legal ingestion (complete):} regulations are parsed from official HTML/PDF sources (EUR-Lex, legislation.gov.uk, MeitY) and chunked by legal unit using a multi-statute heading grammar (\textsl{Article~7} for GDPR/DPDP, \textsl{6.---(1)} UK-SI numbering for PECR, \textsl{1798.100.}\ for the CCPA); heading-only fragments are discarded. GDPR yields exactly 99 article chunks. Chunks carry regulation, article, requirement-type and severity metadata and are embedded into a persistent ChromaDB collection.
+    \item \textbf{Runtime collection (complete):} a Playwright-instrumented Chromium visit records the HAR, hooks fingerprinting APIs (canvas, WebGL, AudioContext, WebRTC, battery, fonts) via an injected trap script, tags consent-related UI elements, and extracts policy links; a separate scraper exports the site's privacy and cookie policies as markdown. The evidence extractor applies the conservative profiling-cookie rule of~\cite{trevisan-2019-cookielaw} (third-party $\wedge$ present in the intersection of two tracker lists $\wedge$ lifetime $\geq$ 30 days) and also recovers JavaScript-set cookies from browser context state, which header-only analysis misses.
+    \item \textbf{RAG evaluation (complete):} per dimension, the scorer retrieves law chunks (metadata-filtered semantic search plus deterministic \emph{dimension-anchored} fetches of the dimension's known articles), injects the full policy text and the selected behavioural evidence, and prompts an LLM (temperature 0, strict JSON) for a verdict. The scorer is provider-agnostic (OpenAI and Anthropic backends).
+    \item \textbf{Reporting (complete):} verdicts are aggregated severity-weighted and rendered as a self-contained HTML report; a local web frontend runs the full pipeline per URL with a live stage log.
+\end{itemize}
+During implementation the embedding model had to be changed. Legal-domain BERT (\textsl{nlpaueb/legal-bert-base-uncased}) was chosen initially for its legal vocabulary, but retrieval tests showed near-uniform cosine similarities (about 0.72 for every chunk) and effectively random ranking. It is a raw masked-language model without sentence-level training, so the vocabulary advantage did not help retrieval. It was replaced with a sentence-trained encoder (\textsl{all-mpnet-base-v2}), after which the expected articles ranked first.
+
+\subsection{Scoring Strategy}
+For each dimension the LLM returns a structured judgement rather than a bare score. It contains: a \textbf{score} (0--100, anchored to a rubric), a \textbf{verdict} (\textsc{pass}, \textsc{fail}, \textsc{partial}, or \textsc{not-addressed}) with a \textbf{confidence} value, following the abstention lesson of~\cite{ravichander-2019-privacyqa}; the \textbf{breached article}, quoted from the retrieved text only; the \textbf{policy claim} quoted from the notice; the \textbf{behavioural evidence} relied upon; a \textbf{discrepancy type} (\emph{neglect} / \emph{contrary} / \emph{inadequate}, the typology of~\cite{xiao-2023-lalaine}); and a plain-English explanation and recommended fix. Dimension scores are aggregated using severity weights (critical 3, high 2, medium 1, low 0.5), with \textsc{not-addressed} dimensions excluded; all output is framed as \emph{potential} non-compliance~\cite{zimmeck-2019-maps}.
+
+\begin{algorithm}[!t]
+\caption{Per-dimension RAG compliance scoring}
+\label{alg:scoring}
+\begin{algorithmic}[1]
+\Require target site $s$; dimensions $D$; regulations $R$; vector store $V$
+\Ensure severity-weighted report with article-cited verdicts
+\State $H \leftarrow$ \textsc{CollectTelemetry}($s$) \Comment{HAR, JS alarms, consent UI}
+\If{$H$ is degenerate (bot-blocked / empty capture)}
+    \State \textbf{return} \textsc{InsufficientData} \Comment{refuse to score garbage input}
+\EndIf
+\State $E \leftarrow$ \textsc{ExtractEvidence}($H$) \Comment{profiling-cookie rule~\cite{trevisan-2019-cookielaw}}
+\State $P \leftarrow$ \textsc{ScrapePolicies}($s$)
+\For{each dimension $d \in D$}
+    \State $e_d \leftarrow$ evidence in $E$ matching $d$'s evidence keys
+    \If{$P = \emptyset$ \textbf{and} $e_d = \emptyset$}
+        \State verdict $\leftarrow$ \textsc{not-addressed} \Comment{deterministic guard; no LLM call}
+    \Else
+        \State $L_d \leftarrow$ anchored articles($d$) $\cup$ filtered search($V, d, R$)
+        \State verdict $\leftarrow$ \textsc{LLM}$_{T=0}$(IRAC: issue $d$, rule $L_d$, facts $P + e_d$)
+        \State validate JSON; clamp score/confidence; check verdict enum
+    \EndIf
+\EndFor
+\State \textbf{return} severity-weighted aggregate + per-dimension verdicts
+\end{algorithmic}
+\end{algorithm}
+
+The full scoring procedure, including the two deterministic guards added after the error analysis of Section~\ref{sec:results}, is given in Algorithm~\ref{alg:scoring}.
+
 \subsection{Techniques and Artifacts Adopted from Reviewed Work}
 \label{sec:adopted}
 Beyond motivating the gap, the reviewed papers contribute reusable techniques, datasets, and open-source artifacts that are incorporated into the implementation. Table~\ref{tab:adopted} consolidates this mapping from source to framework component. Publicly released artifacts are reused where licences permit: the crawler and classifiers of~\cite{bouhoula-2024-cookies}, the measurement tool and dataset of~\cite{trevisan-2019-cookielaw}, the OPP-115 corpus~\cite{wilson-2016-opp115}, the PrivacyQA dataset~\cite{ravichander-2019-privacyqa}, and the LegalBench task suite~\cite{guha-2023-legalbench}.
@@ -268,94 +311,164 @@ Beyond motivating the gap, the reviewed papers contribute reusable techniques, d
 \end{table}
 
 % =========================
-% Section 4: Datasets
+% Section 4: Preliminary Results
 % =========================
-\section{Datasets}
-\label{sec:datasets}
-The project uses two complementary dataset categories:
-\begin{itemize}
-    \item \textbf{Compliance Regulations (static, pre-loaded):} text and PDF sources of the major privacy laws used as ground truth, including GDPR (EU), DPDP (India), CCPA (USA), and PECR (UK).
-    \item \textbf{Website Telemetry (dynamic, collected per scan):} scraped Markdown privacy and cookie policies from target domains; HAR logs capturing runtime HTTP requests, headers, and set-cookie actions; and JSON telemetry capturing JavaScript execution alerts, canvas-fingerprinting calls, and security headers (CSP, HSTS).
-\end{itemize}
+\section{Evaluation}
+\label{sec:results}
+The framework was evaluated in three stages. A single site was audited in detail to establish that the pipeline produces usable findings, a batch of twenty sites was then audited to measure coverage and behaviour across sectors, and every verdict in that batch was checked mechanically against the telemetry it was derived from. The third stage exists because an LLM-based auditor is only useful if its findings can be shown to come from the evidence rather than from the model. All figures below are from the run of 16 August 2026 using gpt-4o-mini at temperature 0.
 
-% =========================
-% Section 5: Project Plan
-% =========================
-\section{Project Plan and Milestones}
-\label{sec:plan}
-The capstone is scheduled over a 16-week timeline divided into five milestones plus final submission. Figure~\ref{fig:gantt} presents the Gantt chart of the schedule, and Table~\ref{tab:gantt} lists the key deliverables for each milestone.
-
-\begin{figure*}[!t]
-\centering
-\resizebox{0.82\textwidth}{!}{%
-\begin{tikzpicture}[font=\small]
-  % week grid and numbers
-  \foreach \w in {0,1,...,16}{\draw[gray!22] (\w,0.7) -- (\w,-5.7);}
-  \foreach \w in {1,...,16}{\node[font=\scriptsize, gray!55!black] at (\w-0.5,1.0) {\w};}
-  \node[font=\scriptsize\itshape, gray!55!black] at (8,1.45) {Week};
-  % milestone bars (1 unit = 1 week)
-  \fill[blue!55,rounded corners=2pt]        (0,-0.3)  rectangle (3,0.3);
-  \fill[cyan!60!blue,rounded corners=2pt]   (3,-1.3)  rectangle (6,-0.7);
-  \fill[green!55!black,rounded corners=2pt] (6,-2.3)  rectangle (9,-1.7);
-  \fill[orange!85!black,rounded corners=2pt](9,-3.3)  rectangle (12,-2.7);
-  \fill[magenta!65,rounded corners=2pt]     (12,-4.3) rectangle (15,-3.7);
-  \fill[violet!60,rounded corners=2pt]      (15,-5.3) rectangle (16,-4.7);
-  % left labels
-  \foreach \y/\t in {%
-    0/{\textbf{M1} Research \& Setup},
-    -1/{\textbf{M2} Legal Ingestion},
-    -2/{\textbf{M3} Telemetry \& Crawler},
-    -3/{\textbf{M4} Scorer \& RAG},
-    -4/{\textbf{M5} Eval.\ \& Writing},
-    -5/{Final Submission}}{%
-    \node[anchor=east] at (-0.25,\y) {\t};}
-\end{tikzpicture}}
-\caption{Gantt chart of the 16-week capstone timeline: five milestones (M1--M5) and final submission.}
-\label{fig:gantt}
-\end{figure*}
+\subsection{Case Study: Live Audit of a News Website}
+The prototype's first end-to-end audit targeted \textsl{www.independent.ie} (news media --- the category with the highest violation rates in~\cite{trevisan-2019-cookielaw}), scored against GDPR and PECR with a clean-profile, no-interaction visit. The telemetry recorded \textbf{22 third-party domains} contacted before any consent, including \textbf{15 tracker eTLD+1s} (among them doubleclick.net, taboola.com and google-analytics.com), \textbf{4 fingerprinting API calls} (WebRTC $\times$3, Battery API), and \textbf{zero pre-consent profiling cookies} under the strict detection rule. Table~\ref{tab:results} summarises the verdicts.
 
 \begin{table}[!t]
 \centering
-\caption{16-Week Project Plan and Milestones}
-\label{tab:gantt}
+\caption{Audit verdicts for www.independent.ie (GDPR + PECR)}
+\label{tab:results}
 \footnotesize
-\begin{tabular}{P{1.9cm} c P{3.9cm}}
+\begin{tabular}{P{2.6cm} P{1.4cm} P{3.2cm}}
 \toprule
-\textbf{Milestone} & \textbf{Weeks} & \textbf{Key Deliverables} \\
+\textbf{Dimension} & \textbf{Verdict} & \textbf{Key finding} \\
 \midrule
-M1: Research \& Setup & 1--3 & Literature review finalised; environment configured \\
+Tracking without consent & \textsc{fail} (18) & tracker requests + fingerprinting before any consent; discrepancy: \emph{contrary} \\
 \addlinespace
-M2: Legal Ingestion & 4--6 & Document parsing; ChromaDB + legal-BERT embeddings \\
+Disclosure of third parties & \textsc{fail} & no recipients named in policy; 15 tracker domains observed \\
 \addlinespace
-M3: Telemetry \& Crawler & 7--9 & Playwright automation; HAR logging; policy extraction \\
-\addlinespace
-M4: Scorer \& RAG & 10--12 & RAG retrieval; LLM prompting; 14-dimension scorer \\
-\addlinespace
-M5: Eval.\ \& Writing & 13--15 & Integration testing; documentation; final report \\
-\addlinespace
-Submission & 16 & Final submission and presentation \\
+Pre-consent tracking cookies & \textsc{partial} (50) & no profiling cookies observed; consent UI present \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+This case shows why the three sources need to be combined. The site's consent platform does withhold cookies, so a cookie-only audit in the style of~\cite{trevisan-2019-cookielaw} would find little. However, tracker requests and fingerprinting calls still run before consent, and the written policy does not name any of the observed recipients. The contradiction only becomes visible when the law, the notice and the behaviour are examined together.
+
+\subsection{Batch Evaluation Across Twenty Websites}
+\label{sec:batch}
+To test the pipeline beyond a single case, twenty sites were selected across six sectors and four jurisdictions. The selection deliberately includes sectors at both ends of the range reported by Trevisan et al.~\cite{trevisan-2019-cookielaw}, namely news media and government, and two sites known to use bot protection so that the failure path would also be exercised. Each site was audited on three dimensions (pre-consent tracking, tracking without consent, disclosure of third parties) against GDPR and PECR, with DPDP added automatically for Indian domains. The harness records the outcome of every stage, so sites that fail are counted rather than silently dropped.
+
+\begin{table}[!t]
+\centering
+\caption{Coverage outcomes over twenty sites}
+\label{tab:coverage}
+\footnotesize
+\begin{tabular}{P{3.4cm} c P{3.2cm}}
+\toprule
+\textbf{Outcome} & \textbf{Sites} & \textbf{Cause} \\
+\midrule
+Scored & 15 & --- \\
+Capture refused & 2 & bot protection; degenerate capture rejected by the sanity gate \\
+\addlinespace
+Collection timed out & 2 & slow sites exceeding the collector budget \\
+\addlinespace
+Insufficient data & 1 & no policy retrieved and no relevant events observed \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:coverage} gives the coverage outcome. Fifteen of twenty sites produced a scored report. Two sites (irctc.co.in and ndtv.com) were refused by the capture sanity gate, which is the intended behaviour: both returned effectively empty pages under a headless browser, and scoring such a capture would produce confident findings about nothing. A further two sites exceeded the collection timeout, and one site produced a report of \textsc{insufficient-data} because neither a policy nor relevant behavioural events could be obtained. The overall capture failure rate is therefore 10\%, and the rate at which the pipeline declines to give a compliance opinion is 25\%.
+
+\begin{table}[!t]
+\centering
+\caption{Mean score by sector (higher is more compliant)}
+\label{tab:sector}
+\footnotesize
+\begin{tabular}{P{2.3cm} c c P{2.3cm}}
+\toprule
+\textbf{Sector} & \textbf{Sites} & \textbf{Mean} & \textbf{FAIL verdicts} \\
+\midrule
+Government & 1 & 53.0 & 0 / 3 \\
+SaaS & 1 & 44.0 & 0 / 3 \\
+Education & 4 & 29.2 & 7 / 12 \\
+News & 6 & 24.3 & 8 / 18 \\
+Social & 1 & 25.0 & 1 / 3 \\
+E-commerce & 2 & 3.0 & 4 / 6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:sector} reports the mean score by sector. The ordering is broadly consistent with the published sector pattern: the government site scores highest and news media sits in the lower half. The result should not be over-read. Several sectors are represented by a single site, and the e-commerce mean is depressed by the confound discussed in Section~\ref{sec:limits}. Across all scored sites the mean was 26.1 and the range 0 to 53, but only seven distinct scores occurred in fifteen reports. The model anchors on the round values of the scoring rubric rather than using the full scale, so the scores are better treated as an ordinal ranking than as interval measurements.
+
+At the level of individual dimensions, tracking without consent produced ten \textsc{fail} verdicts, four \textsc{partial} and one \textsc{pass}, and disclosure of third parties produced seven \textsc{fail} and eight \textsc{partial}. Pre-consent tracking produced only three \textsc{fail} verdicts and ten \textsc{partial}, because the strict profiling-cookie rule rarely fires on sites that operate a consent platform. That dimension therefore carries less discriminating information than the other two, which is a useful finding in itself: the cookie-based test that the earlier literature relies on is the weakest of the three signals on the current web, while request-level and disclosure-level evidence separate sites much more clearly.
+
+\subsection{Verifying Findings Against the Telemetry}
+\label{sec:verify}
+Compliance findings produced by a language model are only credible if each claim can be traced to the artefact it came from. A verification tool was therefore written that re-checks every verdict mechanically, without invoking a model, so that the check itself cannot fabricate. To make this possible the scorer records, for every verdict, which legal articles were retrieved and the exact rule text that was placed in the prompt.
+
+Five checks are applied to each verdict. The first confirms that the cited article was actually retrieved for that dimension. The second confirms that the quoted legal requirement appears in the retrieved rule text. The third confirms that the quoted policy claim appears in the scraped policy. The fourth confirms that every domain, cookie name and count named in the finding exists in the evidence extracted from the HAR file. The fifth applies internal consistency rules, for example that a \textsc{not-addressed} verdict carries no breach citation and that a discrepancy type is asserted only when both a policy quotation and behavioural evidence are present. Quotation matching normalises whitespace and quotation marks and accepts elided quotations, but reports anything below a high similarity threshold as a paraphrase rather than a quotation.
+
+\begin{table}[!t]
+\centering
+\caption{Attribution of the five flagged claims}
+\label{tab:flags}
+\footnotesize
+\begin{tabular}{P{2.9cm} c P{3.5cm}}
+\toprule
+\textbf{Cause} & \textbf{Flags} & \textbf{Interpretation} \\
+\midrule
+Over-claim on missing input & 4 & non-disclosure asserted about a policy that was never retrieved \\
+\addlinespace
+Unlocatable quotation & 1 & quoted requirement not located in the retrieved article text \\
+\midrule
+Fabricated behavioural claim & 0 & no invented domain, cookie or count \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Across the fifteen scored reports the verification flagged five claims, and the mean grounding rate, that is, the proportion of dimensions in which every claim could be traced to its source, was 86.7\%. Each flag was inspected individually and the attribution is given in Table~\ref{tab:flags}. Four occurred on sites where no policy document could be retrieved, and in every case the model had asserted a discrepancy type of \emph{neglect}, that is, that a practice had not been disclosed in a document it had never been shown. Non-disclosure cannot be established from an unread policy, so this is genuine over-claiming; it is now rejected by the consistency rules and constrained in the prompt. The remaining flag is a paraphrase of a definition of consent that appears in GDPR Article 4(11) rather than in the retrieved Article 7 text, so the statement is legally accurate but is not a quotation of the rule that was supplied.
+
+Two defects were also found in the verification tool itself during this analysis and corrected: names of fingerprinting APIs such as \texttt{navigator.getBattery} matched the pattern used to detect domain names, and elided quotations were tested after their ellipsis markers had been removed, so valid quotations spanning a gap were reported as unmatched. Both inflated the apparent error rate of the model. This is worth recording because it illustrates a general difficulty in evaluating a generative system: the measuring instrument requires validation of its own.
+
+The result that matters for the reliability of the approach is the last row of Table~\ref{tab:flags}. No claim was found in which the model asserted a behavioural event that did not appear in the telemetry. Every domain, cookie and fingerprinting call named in the fifteen reports was present in the corresponding HAR evidence. The errors that did occur were of two kinds: quoting loosely, and reasoning about a document that had not been retrieved. Both are addressable by constraining the prompt, and both are detectable without human review, which is what makes the check usable at scale.
+
+\subsection{Limitations Revealed by Testing}
+\label{sec:limits}
+The batch exposed three limitations that were not visible from a single case study.
+
+\emph{Policy retrieval dominates the score.} Sites for which no policy document was retrieved scored 0.0 on average, while sites with one or two policy documents scored 32.6. A gap of roughly thirty-three points is attributable to the auditing pipeline's own retrieval coverage rather than to the behaviour of the site. Two causes were identified: policies hosted on a parent company domain, which the same-domain preference of the scraper misses, and pages that render policy links only after JavaScript execution. Results for sites without a retrieved policy must therefore be reported separately, and are excluded from the sector means where noted.
+
+\emph{Bot protection bounds the achievable coverage.} Two sites could not be captured at all and two more exceeded the collection budget. Because the sanity gate refuses to score a degenerate capture, this manifests as reduced coverage rather than as wrong answers, which is the preferable failure mode, but it does mean that the sites most likely to engage in aggressive tracking are also among the hardest to audit.
+
+\emph{Jurisdiction determines the applicable instrument.} The ePrivacy Directive is transposed nationally, so the cookie-consent rule differs by country even though the GDPR applies uniformly across the Union. An early version of the batch scored every site against the GDPR and the UK Privacy and Electronic Communications Regulations, which is incorrect for the eleven Irish sites in the sample: Ireland transposed the Directive through S.I. 336/2011, whose Regulation 5(3) is the operative provision and is enforced by the Data Protection Commission. The framework now selects instruments by jurisdiction, and the Irish instrument has been ingested alongside the others; the results reported in this section, however, predate that correction, so the ePrivacy citations for Irish sites in this run name the UK instrument. The GDPR findings, which account for the disclosure dimension, are unaffected, and re-scoring the Irish sample under S.I. 336/2011 is immediate remaining work. The episode is worth recording because it is a failure mode that a single-jurisdiction evaluation would never expose, and because cross-border auditing tools that assume one ePrivacy text are subject to it.
+
+A related observation supports the retrieval-based design. The corpus holds consolidated legislation, so the ingested PECR text includes the substitution of Regulation 6 and the insertion of Schedule A1 by the Data (Use and Access) Act 2025, in force from February 2026, which moves statistical cookies from an opt-in to an opt-out basis under defined conditions. The system therefore reasons over the amended rule without any change to the model, because the law is held in the vector store rather than in model weights. A system that had internalised the earlier rule during training would continue to apply it.
+
+\emph{Score granularity is coarse.} With seven distinct values across fifteen sites, the numeric score should not be treated as a continuous measurement. The verdict labels and the underlying evidence carry the information; the score is best used to rank sites rather than to quantify the distance between them.
+Testing surfaced three failure modes, each fixed at the layer that caused it and re-verified:
+\begin{enumerate}
+    \item \textbf{LLM over-condemnation.} In an early run the pre-consent-tracking dimension returned \textsc{fail} (score 0, confidence 1.0) although no profiling cookies had been observed: the model invented cookie installations and misread the audit protocol line (``consent interaction: none'') as the \emph{site} lacking a consent mechanism. \emph{Fix:} evidence-discipline rules in the system prompt (cite only listed events; empty evidence forbids behavioural violations) and an explicit audit-protocol note in the evidence block. On re-run the verdict flipped to \textsc{partial} with policy-only reasoning and \texttt{behavioral\_evidence: null}.
+    \item \textbf{Retrieval near-miss.} One verdict cited GDPR Art~19 (rectification notification) instead of Art~13(1)(e) (disclosure of recipients). Semantic similarity had ranked the wrong ``recipients'' article first, and the model correctly obeyed the instruction to cite only retrieved text. \emph{Fix:} dimension-anchored retrieval (Section~\ref{sec:impl}). This also supports the grounding design: the failure moved from the generation step to the retrieval step, where it could be fixed deterministically.
+    \item \textbf{Degenerate capture.} A bot-blocked site (\textsl{www.ndtv.com}) produced an empty capture (1 request, 0 UI elements), and the scorer initially issued confident \textsc{fail} verdicts on nothing, treating the unretrieved policy as proof that none exists. \emph{Fix:} a capture sanity gate that refuses to score degenerate scans, and an insufficiency guard: with no policy text and no behavioural events the verdict is forced to \textsc{not-addressed} without invoking the LLM, and the overall verdict becomes \textsc{insufficient-data}.
+\end{enumerate}
+Together with the embedder change in Section~\ref{sec:impl}, these are four documented findings from the implementation phase. A fifth was added by the batch: on sites where the policy could not be retrieved, the model inferred non-disclosure from the absence of a document rather than abstaining, which is now prevented.
+
 % =========================
-% Section 6: Challenges
+% Section 5: Evaluation Plan
 % =========================
-\section{Potential Challenges and Constraints}
-\label{sec:challenges}
-Several challenges are anticipated for the proposed approach, each with a mitigation:
-\begin{itemize}
-    \item \textbf{Bot detection on complex sites.} Major platforms (e.g., Meta) block headless clients. \textit{Mitigation:} stealth routing, user-agent randomisation, and loading canonical policy paths where available.
-    \item \textbf{LLM context limits and cost.} Full policies (10k+ words) and HAR logs may exceed the context window. \textit{Mitigation:} pre-extract HAR traces into structured evidence snippets (set cookies, unique third-party domains) before prompting.
-    \item \textbf{LLM hallucination on legal text.} The model may cite non-existent articles. \textit{Mitigation:} inject the exact retrieved legal text into the prompt so judgements are grounded in verifiable sources (the core motivation for the RAG design).
-\end{itemize}
+\section{Threats to Validity and Remaining Evaluation}
+\label{sec:evalplan}
+Three threats to validity follow from the design of the study. The ground truth for compliance is not established independently: the batch measures what the system reports and whether those reports are grounded in the evidence, but not whether a lawyer would agree with the verdicts. Establishing that requires hand annotation, which is the principal item of remaining evaluation and follows the per-clause protocol of~\cite{xie-2025-llmpolicy}: a sample of sites annotated against the article text, from which per-dimension precision, recall and F1 are computed. A single annotator is a known weakness, acknowledged in the light of the expert disagreement reported by~\cite{ravichander-2019-privacyqa}.
+
+The second threat is sample size. Six sectors across fifteen scored sites is sufficient to expose pipeline limitations, but not to make claims about sector-level compliance rates; several sectors are represented by a single site.
+
+The third threat is that a single model was used throughout. Model selection has not yet been made empirically, and the intended comparison uses the LegalBench privacy tasks~\cite{guha-2023-legalbench} together with the annotated sample. Reproducibility is supported by temperature-0 scoring, pinned tracker lists and versioned prompts; repeat-run variance is to be reported alongside the F1 results.
+
+% =========================
+% Section 6: Conclusion
+% =========================
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+This paper reviewed automated privacy-compliance research across four directions and showed that no prior system integrates the three evidence sources a compliance judgement requires: the law, the site's written notice, and its observed runtime practice. We then presented the design and implementation of a framework that closes this gap for the dynamic web. Regulations are chunked by legal unit into a vector store, behavioural evidence is captured with an instrumented browser, and an LLM scores each compliance dimension using the retrieved law, the scraped policy and the observed behaviour under an IRAC structure. In live audits the prototype detected a site whose trackers and fingerprinting run before consent while its policy names no recipients, which no single-modality system could have shown. A batch of twenty sites produced fifteen scored reports, with the remainder declined rather than guessed at. Mechanical verification of every verdict against its own telemetry gave a grounding rate of 86.7\% and found no case in which the model asserted a behavioural event that the evidence did not contain; the errors that did occur were reasoning about policies that had not been retrieved, and one paraphrase of a definition drawn from an article that had not been supplied. Both are correctable in the prompt and both are detectable without human review. Testing also showed that the pipeline's own retrieval coverage, rather than site behaviour, accounts for roughly thirty-three points of score difference where policies could not be obtained, which is the most significant limitation of the current system. Future work includes consent-banner interaction with accept/reject differential testing, following~\cite{bouhoula-2024-cookies}; the evaluation plan of Section~\ref{sec:evalplan}; and post-login observation, i.e.\ comparing what a site collects inside an authenticated session with the consent that was given, which none of the reviewed papers address.
 
 % =========================
 % Section 7: Use of AI
 % =========================
 \section{Use of AI}
 \label{sec:ai}
-In line with the capstone guidelines, the use of AI tools is declared. AI assistance (large language model tools) was used to help format and structure this document, including LaTeX formatting and organising the reference list. All paper selection, literature analysis, identification of the research gap, and the proposed approach are the author's own work, and the author reviewed and takes full responsibility for the final content.
+In line with the capstone guidelines, the use of AI tools is declared. AI assistance (large language model tools) was used during this project as a coding and writing aid: for LaTeX formatting and structuring of this document, for drafting and revising sections of the text, and for assistance during the implementation and debugging of the prototype. The research direction, design decisions and experiments are the author's own.
+
+% =========================
+% Acknowledgment
+% =========================
+\section*{Acknowledgment}
+The author thanks Dr.\ Ihsan for his supervision throughout this capstone project, and in particular for the critique at the interim review that led to the multi-site evaluation and the verification of findings against the collected telemetry reported in Section~\ref{sec:results}. The author also acknowledges the maintainers of the Disconnect and Ghostery tracker databases, and the Irish Statute Book, EUR-Lex and legislation.gov.uk services, whose openly published texts made the legal corpus possible.
 
 % ---------- Bibliography ----------
 \bibliographystyle{ieeetr}

@@ -1,0 +1,58 @@
+{
+  "domain": "www.gov.ie",
+  "scan_date": "2026-08-16T19:38:23.396445+00:00",
+  "model": "gpt-4o-mini",
+  "regulations_filter": [
+    "GDPR",
+    "PECR"
+  ],
+  "har_file": "/Users/aaronjjean/Documents/GitHub/comp_square/telemetry_output/www.gov.ie_20260816_193751.har",
+  "policies": [],
+  "disclaimer": "Automated research output. All findings are POTENTIAL violations and do not constitute legal advice.",
+  "overall_score": null,
+  "overall_verdict": "INSUFFICIENT_DATA",
+  "dimensions": [
+    {
+      "dimension": "pre_consent_tracking",
+      "score": null,
+      "verdict": "NOT_ADDRESSED",
+      "confidence": 0.3,
+      "breach": null,
+      "policy_claim": null,
+      "policy_section": null,
+      "behavioral_evidence": null,
+      "discrepancy_type": null,
+      "explanation": "No policy document retrieved and no behavioural events of the relevant types observed \u2014 insufficient evidence to assess. (Deterministic guard; LLM not invoked.)",
+      "recommendation": "Re-run the scan; if the capture was degenerate the site may be blocking the headless browser.",
+      "severity": "critical"
+    },
+    {
+      "dimension": "tracking_without_consent",
+      "score": null,
+      "verdict": "NOT_ADDRESSED",
+      "confidence": 0.3,
+      "breach": null,
+      "policy_claim": null,
+      "policy_section": null,
+      "behavioral_evidence": null,
+      "discrepancy_type": null,
+      "explanation": "No policy document retrieved and no behavioural events of the relevant types observed \u2014 insufficient evidence to assess. (Deterministic guard; LLM not invoked.)",
+      "recommendation": "Re-run the scan; if the capture was degenerate the site may be blocking the headless browser.",
+      "severity": "critical"
+    },
+    {
+      "dimension": "disclosure_of_third_parties",
+      "score": null,
+      "verdict": "NOT_ADDRESSED",
+      "confidence": 0.3,
+      "breach": null,
+      "policy_claim": null,
+      "policy_section": null,
+      "behavioral_evidence": null,
+      "discrepancy_type": null,
+      "explanation": "No policy document retrieved and no behavioural events of the relevant types observed \u2014 insufficient evidence to assess. (Deterministic guard; LLM not invoked.)",
+      "recommendation": "Re-run the scan; if the capture was degenerate the site may be blocking the headless browser.",
+      "severity": "high"
+    }
+  ]
+}
