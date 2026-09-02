@@ -13,3 +13,8 @@ ingestion/data/
 PREP_Deliverable2.md
 # NOTE: evaluation/results/ is intentionally NOT ignored — the CSV, summary.md
 # and verification JSONs are the evidence cited in the paper.
+
+# secrets — never commit
+.env
+.env.*
+!.env.example

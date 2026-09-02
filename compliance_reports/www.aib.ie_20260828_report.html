@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Compliance report — www.aib.ie</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font: 15px/1.55 -apple-system, 'Segoe UI', Roboto, sans-serif; color: #1A1A2E; background: #fff; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 24px 60px; }
+  header { background: #1E2761; color: #fff; padding: 36px 0 30px; }
+  header .wrap { padding-bottom: 0; }
+  h1 { font-family: Cambria, Georgia, serif; font-size: 30px; }
+  .sub { color: #CADCFC; margin-top: 6px; font-size: 13.5px; }
+  .overall { display: flex; align-items: center; gap: 22px; margin-top: 22px; }
+  .onum { font-family: Cambria, Georgia, serif; font-size: 64px; font-weight: bold; line-height: 1; }
+  .overdict { font-size: 15px; font-weight: 600; letter-spacing: .04em; }
+  .disclaimer { background: #2A3878; color: #CADCFC; font-size: 12px; padding: 9px 14px; border-radius: 8px; margin: 20px 0 26px; }
+  h2 { font-family: Cambria, Georgia, serif; color: #1E2761; font-size: 21px; margin: 34px 0 14px; }
+  h3 { color: #1E2761; font-size: 14.5px; margin: 18px 0 6px; }
+  .dim { background: #F2F5FC; border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .dimhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .dimname { font-weight: 700; font-size: 16px; margin: 0 8px; }
+  .badge { font-size: 11px; font-weight: 700; letter-spacing: .05em; padding: 3px 9px; border-radius: 20px; vertical-align: 2px; }
+  .cite { color: #5A6178; font-size: 12.5px; }
+  .dimscore { font-family: Cambria, Georgia, serif; font-size: 30px; font-weight: bold; }
+  .of { font-size: 13px; color: #5A6178; font-weight: normal; }
+  .bar { height: 6px; background: #E2E7F2; border-radius: 3px; margin: 10px 0 6px; }
+  .fill { height: 100%; border-radius: 3px; }
+  .meta { color: #5A6178; font-size: 12.5px; margin-bottom: 10px; }
+  .row { display: flex; gap: 14px; padding: 7px 0; border-top: 1px solid #E2E7F2; }
+  .k { flex: 0 0 190px; color: #5A6178; font-size: 12.5px; font-weight: 600; padding-top: 1px; }
+  .v { flex: 1; font-size: 13.5px; }
+  ul { margin: 4px 0 4px 22px; font-size: 13px; }
+  ul.cols { columns: 3; }
+  code { background: #E9EDF7; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .section { margin-top: 10px; }
+  footer { color: #5A6178; font-size: 11.5px; margin-top: 40px; border-top: 1px solid #E2E7F2; padding-top: 12px; }
+</style></head>
+<body>
+<header><div class="wrap">
+  <h1>Privacy-compliance audit — www.aib.ie</h1>
+  <div class="sub">Scanned 2026-08-28 · model gpt-4o-mini ·
+    regulations: GDPR, PECR ·
+    8 dimensions scored</div>
+  <div class="overall">
+    <div class="onum" style="color:#fff">30<span style="font-size:20px;color:#CADCFC"> / 100</span></div>
+    <div>
+      <div class="overdict" style="color:#CADCFC">POTENTIAL NON COMPLIANCE</div>
+      <div class="sub">severity-weighted across scored dimensions · NOT ADDRESSED excluded</div>
+    </div>
+  </div>
+</div></header>
+<div class="wrap">
+  <div class="disclaimer">Automated research output. All findings are POTENTIAL violations and do not constitute legal advice.</div>
+  <h2>Findings by dimension <span class="cite" style="font-weight:normal">(worst first)</span></h2>
+  
+    <div class="dim">
+      <div class="dimhead">
+        <div>
+          <span class="badge" style="color:#B3261E;background:#FBEAE8;border:1px solid #B3261E33">FAIL</span>
+          <span class="dimname">cookie_retention_period</span>
+          <span class="cite">GDPR Art. 5</span>
+        </div>
+        <div class="dimscore" style="color:#B3261E">0<span class="of"> / 100</span></div>
+      </div>
+      <div class="bar"><div class="fill" style="width:2%;background:#B3261E"></div></div>
+      <div class="meta">severity: high &nbsp;·&nbsp; confidence: 100%</div>
+      <div class='row'><div class='k'>Legal requirement</div><div class='v'><em>“kept in a form which permits identification of data subjects for no longer than is necessary for the purposes for which the personal data are processed”</em> <span class='cite'>(GDPR Art. 5)</span></div></div><div class='row'><div class='k'>Policy claim (notice)</div><div class='v'>“We do not hold your information for longer than necessary to meet our legal and regulatory obligations.” <span class='cite'>— section: How Long We Keep Your Information</span></div></div><div class='row'><div class='k'>Assessment</div><div class='v'>The policy states that information will not be held longer than necessary, but there is no specific mention of cookie retention periods. Since no relevant events were observed, the absence of evidence suggests a potential violation of the stated retention principle.</div></div><div class='row'><div class='k'>Recommended fix</div><div class='v'>The site should explicitly state the retention periods for cookies in the policy to ensure compliance with GDPR requirements.</div></div>
+    </div>
+    <div class="dim">
+      <div class="dimhead">
+        <div>
+          <span class="badge" style="color:#B3261E;background:#FBEAE8;border:1px solid #B3261E33">FAIL</span>
+          <span class="dimname">tracking_without_consent</span>
+          <span class="cite">PECR Art. 6(1)</span>
+        </div>
+        <div class="dimscore" style="color:#B3261E">24<span class="of"> / 100</span></div>
+      </div>
+      <div class="bar"><div class="fill" style="width:24%;background:#B3261E"></div></div>
+      <div class="meta">severity: critical &nbsp;·&nbsp; confidence: 90%</div>
+      <div class='row'><div class='k'>Legal requirement</div><div class='v'><em>“a person must not store information, or gain access to information stored, in the terminal equipment of a subscriber or user.”</em> <span class='cite'>(PECR Art. 6(1))</span></div></div><div class='row'><div class='k'>Policy claim (notice)</div><div class='v'>“We will always let you know how we intend to use your information before collecting it, so that you can decide whether or not you wish to provide that information.” <span class='cite'>— section: Your Right to Privacy</span></div></div><div class='row'><div class='k'>Observed behaviour (practice)</div><div class='v'>tracker_requests (3): go-mpulse.net [Analytics], go-mpulse.net [Analytics], doubleclick.net [FingerprintingGeneral]</div></div><div class='row'><div class='k'>Discrepancy</div><div class='v'><b>Contrary — policy claims the opposite of observed behaviour</b></div></div><div class='row'><div class='k'>Assessment</div><div class='v'>The observed behavior shows that third-party trackers were contacted without user consent, which contradicts the policy statement that users will be informed before their information is collected. The presence of tracker requests indicates a potential violation of the PECR regulation.</div></div><div class='row'><div class='k'>Recommended fix</div><div class='v'>The site should ensure that no third-party trackers are activated without obtaining explicit user consent prior to any data collection.</div></div>
+    </div>
+    <div class="dim">
+      <div class="dimhead">
+        <div>
+          <span class="badge" style="color:#B3261E;background:#FBEAE8;border:1px solid #B3261E33">FAIL</span>
+          <span class="dimname">disclosure_of_third_parties</span>
+          <span class="cite">GDPR Art. 13</span>
+        </div>
+        <div class="dimscore" style="color:#B3261E">24<span class="of"> / 100</span></div>
+      </div>
+      <div class="bar"><div class="fill" style="width:24%;background:#B3261E"></div></div>
+      <div class="meta">severity: high &nbsp;·&nbsp; confidence: 90%</div>
+      <div class='row'><div class='k'>Legal requirement</div><div class='v'><em>“the recipients or categories of recipients of the personal data, if any;”</em> <span class='cite'>(GDPR Art. 13)</span></div></div><div class='row'><div class='k'>Policy claim (notice)</div><div class='v'>“Sometimes we share your information with third parties.” <span class='cite'>— section: Sharing Data</span></div></div><div class='row'><div class='k'>Observed behaviour (practice)</div><div class='v'>third_party_domains (9): doubleclick.net, go-mpulse.net, google.com, googletagmanager.com, hlx.page, onetrust.io, optimizely.com, yextapis.com, yextevents.com</div></div><div class='row'><div class='k'>Discrepancy</div><div class='v'><b>Contrary — policy claims the opposite of observed behaviour</b></div></div><div class='row'><div class='k'>Assessment</div><div class='v'>The policy states that information is shared with third parties, but it does not specify who these third parties are. The observed behavior shows that data is being sent to multiple third-party domains, which contradicts the lack of specific disclosure in the policy.</div></div><div class='row'><div class='k'>Recommended fix</div><div class='v'>The site should explicitly list all third parties that receive personal data in its privacy policy to ensure compliance with GDPR requirements.</div></div>
+    </div>
+    <div class="dim">
+      <div class="dimhead">
+        <div>
+          <span class="badge" style="color:#9A6A00;background:#FAF3E0;border:1px solid #9A6A0033">PARTIAL</span>
+          <span class="dimname">disclosure_of_data_collected</span>
+          <span class="cite">GDPR Art. 13</span>
+        </div>
+        <div class="dimscore" style="color:#B3261E">25<span class="of"> / 100</span></div>
+      </div>
+      <div class="bar"><div class="fill" style="width:25%;background:#B3261E"></div></div>
+      <div class="meta">severity: high &nbsp;·&nbsp; confidence: 70%</div>
+      <div class='row'><div class='k'>Legal requirement</div><div class='v'><em>“the categories of personal data actually collected”</em> <span class='cite'>(GDPR Art. 13)</span></div></div><div class='row'><div class='k'>Policy claim (notice)</div><div class='v'>“we may collect and process information about you such as: Information you give us when applying for a product or service; Information (e.g. phone location) from your mobile to verify you are a resident in the Republic of Ireland when opening a new current account remotely;” <span class='cite'>— section: Information we collect and Use</span></div></div><div class='row'><div class='k'>Assessment</div><div class='v'>The policy mentions that personal data may include information provided when applying for a product or service and phone location for verification. However, it does not explicitly list all categories of personal data collected, which is required by GDPR Article 13. Observed behavior does not provide evidence of compliance or violation, as no relevant events were recorded.</div></div><div class='row'><div class='k'>Recommended fix</div><div class='v'>The policy should explicitly list all categories of personal data collected to ensure compliance with GDPR Article 13.</div></div>
+    </div>
+    <div class="dim">
+      <div class="dimhead">
+        <div>
+          <span class="badge" style="color:#9A6A00;background:#FAF3E0;border:1px solid #9A6A0033">PARTIAL</span>
+          <span class="dimname">cross_border_transfers</span>
+          <span class="cite">GDPR Art. Article 13</span>
+        </div>
+        <div class="dimscore" style="color:#B3261E">25<span class="of"> / 100</span></div>
+      </div>
+      <div class="bar"><div class="fill" style="width:25%;background:#B3261E"></div></div>
+      <div class="meta">severity: high &nbsp;·&nbsp; confidence: 70%</div>
+      <div class='row'><div class='k'>Legal requirement</div><div class='v'><em>“the fact that the controller intends to transfer personal data to a third country or international organisation and the existence or absence of an adequacy decision by the Commission”</em> <span class='cite'>(GDPR Art. Article 13)</span></div></div><div class='row'><div class='k'>Policy claim (notice)</div><div class='v'>“We may transfer your personal information outside of the European Economic Area (EEA) to help us provide your products and services. We expect the same standard of data protection is applied outside of the EEA to these transfers and the use of the information, to ensure your rights are protected.” <span class='cite'>— section: International Transfer of Data</span></div></div><div class='row'><div class='k'>Assessment</div><div class='v'>The policy mentions the potential for international data transfers but does not provide specific details about the safeguards or adequacy decisions required under GDPR. The observed runtime behavior does not provide evidence of compliance or non-compliance regarding these transfers.</div></div><div class='row'><div class='k'>Recommended fix</div><div class='v'>The policy should explicitly state the safeguards in place for international data transfers and whether any adequacy decisions apply.</div></div>
+    </div>
+    <div class="dim">
+      <div class="dimhead">
+        <div>
+          <span class="badge" style="color:#9A6A00;background:#FAF3E0;border:1px solid #9A6A0033">PARTIAL</span>
+          <span class="dimname">data_minimisation</span>
+          <span class="cite">GDPR Art. 5(1)(c)</span>
+        </div>
+        <div class="dimscore" style="color:#B3261E">25<span class="of"> / 100</span></div>
+      </div>
+      <div class="bar"><div class="fill" style="width:25%;background:#B3261E"></div></div>
+      <div class="meta">severity: medium &nbsp;·&nbsp; confidence: 70%</div>
+      <div class='row'><div class='k'>Legal requirement</div><div class='v'><em>“adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed (‘data minimisation’);”</em> <span class='cite'>(GDPR Art. 5(1)(c))</span></div></div><div class='row'><div class='k'>Policy claim (notice)</div><div class='v'>“We may collect and process information about you such as: ... the number of times you may have visited a particular page; and/or ... the amount of time you may have spent on certain pages.” <span class='cite'>— section: Information we collect and Use</span></div></div><div class='row'><div class='k'>Observed behaviour (practice)</div><div class='v'>Tracker classification mode: intersection.</div></div><div class='row'><div class='k'>Discrepancy</div><div class='v'><b>Inadequate — policy mentions the practice but too vaguely</b></div></div><div class='row'><div class='k'>Assessment</div><div class='v'>The policy states that the site collects information about user interactions, including the number of visits to pages and time spent on them. However, the observed use of multiple third-party trackers suggests that data collection may exceed what is necessary for the stated purposes, indicating a potential issue with data minimisation.</div></div><div class='row'><div class='k'>Recommended fix</div><div class='v'>The site should clarify its data collection practices and ensure that it only collects data that is necessary for the specified purposes, potentially reducing the number of third-party trackers used.</div></div>
+    </div>
+    <div class="dim">
+      <div class="dimhead">
+        <div>
+          <span class="badge" style="color:#9A6A00;background:#FAF3E0;border:1px solid #9A6A0033">PARTIAL</span>
+          <span class="dimname">pre_consent_tracking</span>
+          <span class="cite">GDPR Art. Article 7</span>
+        </div>
+        <div class="dimscore" style="color:#9A6A00">50<span class="of"> / 100</span></div>
+      </div>
+      <div class="bar"><div class="fill" style="width:50%;background:#9A6A00"></div></div>
+      <div class="meta">severity: critical &nbsp;·&nbsp; confidence: 70%</div>
+      <div class='row'><div class='k'>Legal requirement</div><div class='v'><em>“the controller shall be able to demonstrate that the data subject has consented to processing of his or her personal data.”</em> <span class='cite'>(GDPR Art. Article 7)</span></div></div><div class='row'><div class='k'>Policy claim (notice)</div><div class='v'>“Marketing cookies are only used where you have consented to them.” <span class='cite'>— section: Cookies</span></div></div><div class='row'><div class='k'>Assessment</div><div class='v'>The policy states that marketing cookies require user consent, but there is no observed behavior indicating whether consent is obtained before these cookies are set. The absence of observed events means we cannot assert a behavioral violation, but the policy&#x27;s clarity on consent is insufficient to ensure compliance.</div></div><div class='row'><div class='k'>Recommended fix</div><div class='v'>The site should implement a clear mechanism to ensure that no tracking cookies are set before user consent is obtained, and provide explicit information on how consent is managed.</div></div>
+    </div>
+    <div class="dim">
+      <div class="dimhead">
+        <div>
+          <span class="badge" style="color:#9A6A00;background:#FAF3E0;border:1px solid #9A6A0033">PARTIAL</span>
+          <span class="dimname">consent_mechanism_validity</span>
+          <span class="cite">GDPR Art. 7</span>
+        </div>
+        <div class="dimscore" style="color:#9A6A00">50<span class="of"> / 100</span></div>
+      </div>
+      <div class="bar"><div class="fill" style="width:50%;background:#9A6A00"></div></div>
+      <div class="meta">severity: critical &nbsp;·&nbsp; confidence: 70%</div>
+      <div class='row'><div class='k'>Legal requirement</div><div class='v'><em>“the request for consent shall be presented in a manner which is clearly distinguishable from the other matters, in an intelligible and easily accessible form, using clear and plain language.”</em> <span class='cite'>(GDPR Art. 7)</span></div></div><div class='row'><div class='k'>Policy claim (notice)</div><div class='v'>“Sometimes we need your consent to use your personal information.” <span class='cite'>— section: Your Right to Privacy</span></div></div><div class='row'><div class='k'>Assessment</div><div class='v'>The policy states that consent is needed for certain uses of personal information, but it does not clearly outline how this consent is obtained or presented. The absence of observed consent interactions means we cannot assert a behavioral violation, but the policy&#x27;s vagueness leads to a partial compliance score.</div></div><div class='row'><div class='k'>Recommended fix</div><div class='v'>Clarify the consent mechanism in the policy, specifying how consent is requested and ensuring it is clearly distinguishable and intelligible.</div></div>
+    </div>
+  
+    <div class="section">
+      <h2>Appendix — behavioural evidence</h2>
+      <div class="meta">Audit protocol: none (clean-profile first visit — Trevisan et al. protocol) &nbsp;·&nbsp; tracker classification: intersection &nbsp;·&nbsp; consent UI detected: True</div>
+      <h3>Third-party domains contacted (9)</h3><ul class='cols'><li><code>doubleclick.net</code></li><li><code>go-mpulse.net</code></li><li><code>google.com</code></li><li><code>googletagmanager.com</code></li><li><code>hlx.page</code></li><li><code>onetrust.io</code></li><li><code>optimizely.com</code></li><li><code>yextapis.com</code></li><li><code>yextevents.com</code></li></ul>
+    </div>
+  <footer>comp_square — LLM-Driven Privacy Compliance Framework · Aaron Joseph Jean, University of Galway ·
+  generated 28 Aug 2026 15:49 · law + notice + practice triangulated per dimension; all findings are potential violations pending legal review.</footer>
+</div>
+</body></html>
